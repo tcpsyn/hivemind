@@ -38,6 +38,7 @@ export interface EditorTab {
   id: string
   filePath: string
   fileName: string
+  language: string
   isModified: boolean
   isReadOnly: boolean
 }

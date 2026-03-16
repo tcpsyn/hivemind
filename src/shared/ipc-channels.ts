@@ -120,6 +120,7 @@ export interface GitDiffRequest {
 export interface GitDiffResponse {
   diff: string
   filePath: string
+  original?: string
 }
 
 export interface GitStatusRequest {
