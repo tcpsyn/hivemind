@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 import type { ElectronApi } from '../../preload/index'
 
 declare global {
@@ -7,3 +5,5 @@ declare global {
     api: ElectronApi
   }
 }
+
+export const api: ElectronApi = window.api
