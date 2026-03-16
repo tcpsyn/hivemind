@@ -65,9 +65,7 @@ export function registerIpcHandlers(services: IpcServices): void {
   ipcMain.handle(RendererToMain.FILE_TREE_REQUEST, (_event, req: FileTreeRequest) =>
     services.onFileTreeRequest(req)
   )
-  ipcMain.handle(RendererToMain.GIT_DIFF, (_event, req: GitDiffRequest) =>
-    services.onGitDiff(req)
-  )
+  ipcMain.handle(RendererToMain.GIT_DIFF, (_event, req: GitDiffRequest) => services.onGitDiff(req))
   ipcMain.handle(RendererToMain.GIT_STATUS, (_event, req: GitStatusRequest) =>
     services.onGitStatus(req)
   )

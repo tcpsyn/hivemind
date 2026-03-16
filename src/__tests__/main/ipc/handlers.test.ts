@@ -18,9 +18,8 @@ vi.mock('electron', () => ({
   BrowserWindow: vi.fn()
 }))
 
-const { registerIpcHandlers, removeIpcHandlers, sendToRenderer } = await import(
-  '../../../main/ipc/handlers'
-)
+const { registerIpcHandlers, removeIpcHandlers, sendToRenderer } =
+  await import('../../../main/ipc/handlers')
 
 function createMockServices() {
   return {
