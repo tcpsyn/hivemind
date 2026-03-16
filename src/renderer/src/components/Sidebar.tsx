@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
+import AgentList from './AgentList'
 import './Sidebar.css'
 
 export default function Sidebar() {
@@ -58,7 +59,7 @@ export default function Sidebar() {
           </button>
           {!agentsCollapsed && (
             <div className="sidebar-section-body" data-testid="agents-placeholder">
-              <span className="placeholder-text">Agent list will appear here</span>
+              <AgentList />
             </div>
           )}
         </div>

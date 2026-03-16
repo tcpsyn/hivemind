@@ -1,0 +1,117 @@
+.agent-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid transparent;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  user-select: none;
+}
+
+.agent-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.agent-list-item.needs-input {
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-left-color: inherit; }
+  50% { border-left-color: var(--status-waiting); }
+}
+
+.agent-list-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.agent-list-item-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-list-item-role {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-list-item-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.status-badge {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+
+.status-badge.running {
+  background: var(--status-running);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+.status-badge.idle {
+  background: var(--status-idle);
+}
+
+.status-badge.waiting {
+  background: var(--status-waiting);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.status-badge.stopped {
+  background: var(--status-stopped);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-text {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.agent-context-menu {
+  position: fixed;
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-1) 0;
+  min-width: 140px;
+}
+
+.agent-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-context-menu-item:hover {
+  background: var(--bg-hover);
+}
