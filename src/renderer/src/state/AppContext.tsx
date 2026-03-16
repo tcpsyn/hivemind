@@ -142,8 +142,14 @@ export function appReducer(state: ExtendedAppState, action: AppAction): Extended
 const StateContext = createContext<ExtendedAppState | null>(null)
 const DispatchContext = createContext<Dispatch<AppAction> | null>(null)
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(appReducer, initialAppState)
+export function AppProvider({
+  children,
+  initialState
+}: {
+  children: ReactNode
+  initialState?: ExtendedAppState
+}) {
+  const [state, dispatch] = useReducer(appReducer, initialState ?? initialAppState)
   return (
     <StateContext.Provider value={state}>
       <DispatchContext.Provider value={dispatch}>{children}</DispatchContext.Provider>
