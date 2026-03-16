@@ -1,0 +1,32 @@
+.bottombar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--bottombar-height);
+  padding: 0 var(--space-4);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  grid-area: bottombar;
+  user-select: none;
+}
+
+.bottombar-left,
+.bottombar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.agent-summary {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.agent-summary.muted {
+  color: var(--text-muted);
+}
+
+.last-activity {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}

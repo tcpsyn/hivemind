@@ -1,0 +1,47 @@
+.app-shell {
+  display: grid;
+  grid-template-areas:
+    'topbar topbar'
+    'sidebar main'
+    'bottombar bottombar';
+  grid-template-rows: var(--topbar-height) 1fr var(--bottombar-height);
+  grid-template-columns: auto 1fr;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  position: relative;
+}
+
+.main-content {
+  grid-area: main;
+  background: var(--bg-primary);
+  overflow: auto;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  bottom: var(--bottombar-height);
+  left: 0;
+  width: 20px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-left: none;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+  z-index: 20;
+  transition: color var(--transition-fast);
+}
+
+.sidebar-toggle:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
