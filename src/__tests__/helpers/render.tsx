@@ -1,10 +1,9 @@
 import { render, type RenderOptions } from '@testing-library/react'
 import { type ReactElement } from 'react'
+import { AppProvider } from '../../renderer/src/state/AppContext'
 
 function AllProviders({ children }: { children: React.ReactNode }) {
-  // Add context providers here as the app grows
-  // e.g., <AppStateProvider><ThemeProvider>{children}</ThemeProvider></AppStateProvider>
-  return <>{children}</>
+  return <AppProvider>{children}</AppProvider>
 }
 
 function customRender(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {

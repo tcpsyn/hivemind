@@ -1,0 +1,110 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--space-4);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+  grid-area: topbar;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.topbar-project-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.topbar-project-path {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-center {
+  display: flex;
+  gap: var(--space-1);
+  -webkit-app-region: no-drag;
+}
+
+.topbar-tab {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.topbar-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.topbar-tab.active {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  -webkit-app-region: no-drag;
+}
+
+.topbar-status {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.status-count {
+  font-size: var(--font-size-xs);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+}
+
+.status-count.running {
+  color: var(--status-running);
+}
+
+.status-count.idle {
+  color: var(--status-idle);
+}
+
+.status-count.waiting {
+  color: var(--status-waiting);
+}
+
+.status-count.stopped {
+  color: var(--status-stopped);
+}
+
+.notification-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--status-waiting);
+  color: var(--bg-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
