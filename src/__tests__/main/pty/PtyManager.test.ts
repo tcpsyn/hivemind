@@ -247,7 +247,7 @@ describe('PtyManager', () => {
     })
 
     it('does not emit error on clean exit', async () => {
-      const agent = await manager.createPty(testConfig, '/tmp')
+      await manager.createPty(testConfig, '/tmp')
       const pty = await getSpawnedPty()
       const handler = vi.fn()
       manager.on('error', handler)
