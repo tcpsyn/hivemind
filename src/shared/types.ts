@@ -10,6 +10,20 @@ export interface AgentState {
   needsInput: boolean
   lastActivity: number
   pid?: number
+  paneId?: string
+  sessionName?: string
+  isTeammate?: boolean
+  agentType?: string
+}
+
+export interface PaneInfo {
+  paneId: string
+  pid: number
+  tty?: string
+  cols: number
+  rows: number
+  name: string
+  isActive: boolean
 }
 
 export interface AgentConfig {
