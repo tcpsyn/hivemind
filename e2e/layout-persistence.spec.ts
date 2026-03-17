@@ -86,7 +86,7 @@ test.describe('Layout Persistence', () => {
       await window.evaluate(() => {
         // Dispatch a custom event or directly set localStorage
         localStorage.setItem(
-          'cc-frontend:layout',
+          'hivemind:layout',
           JSON.stringify({
             sidebarWidth: 350,
             activeTab: 'agents',
@@ -113,7 +113,7 @@ test.describe('Layout Persistence', () => {
 
       // Restore default width
       await window.evaluate(() => {
-        localStorage.removeItem('cc-frontend:layout')
+        localStorage.removeItem('hivemind:layout')
       })
     } finally {
       await electronApp.close()

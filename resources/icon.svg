@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C3CE9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A1FB8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hex" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#A78BFA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#C4B5FD;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#A78BFA;stop-opacity:0.9" />
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <!-- Center hexagon (lead agent) -->
+  <polygon points="256,140 316,170 316,230 256,260 196,230 196,170" fill="url(#glow)" stroke="#E9D5FF" stroke-width="2"/>
+  <!-- Top-left hex -->
+  <polygon points="196,80 256,110 256,170 196,200 136,170 136,110" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Top-right hex -->
+  <polygon points="316,80 376,110 376,170 316,200 256,170 256,110" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Left hex -->
+  <polygon points="136,170 196,200 196,260 136,290 76,260 76,200" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Right hex -->
+  <polygon points="376,170 436,200 436,260 376,290 316,260 316,200" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Bottom-left hex -->
+  <polygon points="196,260 256,290 256,350 196,380 136,350 136,290" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Bottom-right hex -->
+  <polygon points="316,260 376,290 376,350 316,380 256,350 256,290" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Bottom hex -->
+  <polygon points="256,350 316,380 316,440 256,470 196,440 196,380" fill="url(#hex)" opacity="0.6" stroke="#C4B5FD" stroke-width="1.5"/>
+  <!-- Connection dots on center hex -->
+  <circle cx="256" cy="200" r="6" fill="#F5F3FF"/>
+  <circle cx="226" cy="185" r="4" fill="#E9D5FF"/>
+  <circle cx="286" cy="185" r="4" fill="#E9D5FF"/>
+  <circle cx="226" cy="215" r="4" fill="#E9D5FF"/>
+  <circle cx="286" cy="215" r="4" fill="#E9D5FF"/>
+  <!-- Pulse lines from center -->
+  <line x1="226" y1="185" x2="196" y2="170" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
+  <line x1="286" y1="185" x2="316" y2="170" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
+  <line x1="226" y1="215" x2="196" y2="230" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
+  <line x1="286" y1="215" x2="316" y2="230" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
+</svg>

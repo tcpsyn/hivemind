@@ -37,7 +37,7 @@ function createWindow(): void {
     show: false,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
-    title: 'Claude Frontend',
+    title: 'Hivemind',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -151,7 +151,7 @@ function buildAppMenu(): void {
             if (!mainWindow) return
             const result = await dialog.showOpenDialog(mainWindow, {
               title: 'Select Team Configuration',
-              defaultPath: join(app.getPath('home'), '.cc-frontend', 'teams'),
+              defaultPath: join(app.getPath('home'), '.hivemind', 'teams'),
               filters: [
                 { name: 'YAML', extensions: ['yml', 'yaml'] },
                 { name: 'All Files', extensions: ['*'] }
@@ -181,7 +181,7 @@ function buildAppMenu(): void {
       label: 'Help',
       submenu: [
         {
-          label: 'About Claude Frontend',
+          label: 'About Hivemind',
           click: () => {
             mainWindow?.webContents.send('menu:about')
           }
@@ -196,7 +196,7 @@ function buildAppMenu(): void {
 
 function updateWindowTitle(projectName?: string): void {
   if (!mainWindow) return
-  const title = projectName ? `Claude Frontend \u2014 ${projectName}` : 'Claude Frontend'
+  const title = projectName ? `Hivemind \u2014 ${projectName}` : 'Hivemind'
   mainWindow.setTitle(title)
 }
 

@@ -1,6 +1,6 @@
-# Claude Code Frontend
+# Hivemind
 
-A desktop GUI for managing [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agent teams. Built to solve real pain points with the terminal-based tmux team experience: no more fighting with copy-paste across panes, broken mouse scrolling, or losing track of agent output when running 5+ teammates in tiny tmux splits.
+A desktop GUI for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agent teams. Built to solve real pain points with the terminal-based tmux team experience: no more fighting with copy-paste across panes, broken mouse scrolling, or losing track of agent output when running 5+ teammates in tiny tmux splits.
 
 This is a companion tool that extends Claude Code — it requires Claude Code to be installed and configured.
 
@@ -60,8 +60,8 @@ Once enabled, Claude Code will use tmux to spawn teammate agents when you ask it
 ### Install & Run
 
 ```bash
-git clone https://github.com/lukemacneil/claude-code-frontend.git
-cd claude-code-frontend
+git clone https://github.com/lukemacneil/hivemind.git
+cd hivemind
 pnpm install
 pnpm dev
 ```

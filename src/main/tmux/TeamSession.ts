@@ -31,8 +31,8 @@ export class TeamSession extends EventEmitter {
     super()
     this.sessionName = sessionName
     this.projectPath = projectPath
-    this.socketPath = join(tmpdir(), `cc-frontend-${sessionName}-${Date.now()}.sock`)
-    this.tmuxSocketName = `cc-frontend-${sessionName}-${Date.now()}`
+    this.socketPath = join(tmpdir(), `hivemind-${sessionName}-${Date.now()}.sock`)
+    this.tmuxSocketName = `hivemind-${sessionName}-${Date.now()}`
     this.ptyManager = ptyManager ?? new PtyManager()
     this.realTmuxPath = TeamSession.findRealTmux()
   }
@@ -49,7 +49,7 @@ export class TeamSession extends EventEmitter {
       const tmp = tmpdir()
       const files = readdirSync(tmp)
       for (const file of files) {
-        if (file.startsWith('cc-frontend-') && file.endsWith('.sock')) {
+        if (file.startsWith('hivemind-') && file.endsWith('.sock')) {
           try {
             unlinkSync(join(tmp, file))
           } catch {

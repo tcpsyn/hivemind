@@ -22,7 +22,7 @@ export function createLocalStorage(): LayoutStorage {
   return {
     get(key: string) {
       try {
-        const raw = localStorage.getItem(`cc-frontend:${key}`)
+        const raw = localStorage.getItem(`hivemind:${key}`)
         return raw ? JSON.parse(raw) : undefined
       } catch {
         return undefined
@@ -30,7 +30,7 @@ export function createLocalStorage(): LayoutStorage {
     },
     set(key: string, value: unknown) {
       try {
-        localStorage.setItem(`cc-frontend:${key}`, JSON.stringify(value))
+        localStorage.setItem(`hivemind:${key}`, JSON.stringify(value))
       } catch {
         // Storage full or unavailable
       }

@@ -1,6 +1,6 @@
-# Claude Frontend (cc_frontend)
+# Hivemind
 
-An Electron + React + TypeScript desktop application that provides a rich IDE-like interface for managing Claude Code agent teams.
+A desktop GUI for Claude Code agent teams. Electron + React + TypeScript.
 
 ## Tech Stack
 - **Runtime**: Electron
