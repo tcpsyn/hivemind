@@ -1,28 +1,19 @@
-import { useEffect, useCallback } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { useLayoutPersistence, createLocalStorage } from '../hooks/useLayoutPersistence'
 import TopBar from './TopBar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
 import './AppShell.css'
 
+const storage = createLocalStorage()
+
 export default function AppShell() {
   const state = useAppState()
   const dispatch = useAppDispatch()
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        dispatch({ type: 'TOGGLE_SIDEBAR' })
-      }
-    },
-    [dispatch]
-  )
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  useKeyboardShortcuts()
+  useLayoutPersistence(storage)
 
   return (
     <div className="app-shell">
