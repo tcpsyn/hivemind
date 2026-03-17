@@ -46,11 +46,7 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
     .join(' ')
 
   return (
-    <div
-      className={classes}
-      data-testid={`teammate-card-${agent.id}`}
-      onClick={onSelect}
-    >
+    <div className={classes} data-testid={`teammate-card-${agent.id}`} onClick={onSelect}>
       <div className="teammate-card-header">
         <AgentAvatar avatar={agent.avatar} color={agent.color} size={24} />
         <div className="teammate-card-info">

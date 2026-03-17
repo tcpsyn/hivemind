@@ -35,7 +35,6 @@ vi.mock('node-pty', () => ({
       exitCallbacks.push(cb)
       return { dispose: vi.fn() }
     })
-
     ;(pty as Record<string, unknown>)._dataCallbacks = dataCallbacks
     ;(pty as Record<string, unknown>)._exitCallbacks = exitCallbacks
 
@@ -75,13 +74,7 @@ describe('PtyManager teammate extensions', () => {
       'claude --agent-id researcher@team --agent-name researcher --agent-color blue --agent-type Explore --team-name myteam'
 
     it('spawns PTY and returns agent state with isTeammate=true', async () => {
-      const agent = await manager.createTeammatePty(
-        teammateCommand,
-        '/tmp',
-        {},
-        'myteam',
-        '%1'
-      )
+      const agent = await manager.createTeammatePty(teammateCommand, '/tmp', {}, 'myteam', '%1')
       expect(agent.isTeammate).toBe(true)
       expect(agent.paneId).toBe('%1')
       expect(agent.sessionName).toBe('myteam')
@@ -92,13 +85,7 @@ describe('PtyManager teammate extensions', () => {
     })
 
     it('registers pane ID mapping', async () => {
-      const agent = await manager.createTeammatePty(
-        teammateCommand,
-        '/tmp',
-        {},
-        'myteam',
-        '%1'
-      )
+      const agent = await manager.createTeammatePty(teammateCommand, '/tmp', {}, 'myteam', '%1')
       const found = manager.getAgentByPaneId('%1')
       expect(found).toBeDefined()
       expect(found?.id).toBe(agent.id)
@@ -108,13 +95,7 @@ describe('PtyManager teammate extensions', () => {
       const handler = vi.fn()
       manager.on('agent-spawned', handler)
 
-      const agent = await manager.createTeammatePty(
-        teammateCommand,
-        '/tmp',
-        {},
-        'myteam',
-        '%1'
-      )
+      const agent = await manager.createTeammatePty(teammateCommand, '/tmp', {}, 'myteam', '%1')
 
       expect(handler).toHaveBeenCalledWith(agent.id, agent, '%1', 'myteam')
     })
@@ -132,13 +113,7 @@ describe('PtyManager teammate extensions', () => {
     })
 
     it('wires PTY output to output buffer', async () => {
-      const agent = await manager.createTeammatePty(
-        teammateCommand,
-        '/tmp',
-        {},
-        'myteam',
-        '%1'
-      )
+      const agent = await manager.createTeammatePty(teammateCommand, '/tmp', {}, 'myteam', '%1')
       const pty = await getSpawnedPty()
 
       pty._dataCallbacks.forEach((cb) => cb('hello output'))

@@ -65,13 +65,7 @@ describe('TmuxCommandParser', () => {
 
   describe('list-panes with -F format string', () => {
     it('parses -F with format string', () => {
-      const result = parseTmuxArgs([
-        'list-panes',
-        '-t',
-        'main',
-        '-F',
-        '#{pane_id}:#{pane_pid}'
-      ])
+      const result = parseTmuxArgs(['list-panes', '-t', 'main', '-F', '#{pane_id}:#{pane_pid}'])
       expect(result.command).toBe('list-panes')
       expect(result.args.t).toBe('main')
       expect(result.args.F).toBe('#{pane_id}:#{pane_pid}')
@@ -87,13 +81,7 @@ describe('TmuxCommandParser', () => {
     })
 
     it('parses display-message with -t and -p', () => {
-      const result = parseTmuxArgs([
-        'display-message',
-        '-t',
-        'main',
-        '-p',
-        '#{window_id}'
-      ])
+      const result = parseTmuxArgs(['display-message', '-t', 'main', '-p', '#{window_id}'])
       expect(result.command).toBe('display-message')
       expect(result.args.t).toBe('main')
       expect(result.args.p).toBe(true)
@@ -135,14 +123,7 @@ describe('TmuxCommandParser', () => {
     })
 
     it('preserves all trailing args as rawArgs for send-keys', () => {
-      const result = parseTmuxArgs([
-        'send-keys',
-        '-t',
-        '%0',
-        'echo',
-        'hello world',
-        'Enter'
-      ])
+      const result = parseTmuxArgs(['send-keys', '-t', '%0', 'echo', 'hello world', 'Enter'])
       expect(result.command).toBe('send-keys')
       expect(result.args.t).toBe('%0')
       expect(result.rawArgs).toEqual(['echo', 'hello world', 'Enter'])

@@ -21,9 +21,7 @@ export function LeadLayout() {
 
   const teammates = useMemo(() => {
     const id = state.layout.teamLeadId
-    return Array.from(state.agents.values()).filter(
-      (a: AgentState) => a.id !== id && a.isTeammate
-    )
+    return Array.from(state.agents.values()).filter((a: AgentState) => a.id !== id && a.isTeammate)
   }, [state.agents, state.layout.teamLeadId])
 
   const hasTeammates = teammates.length > 0
@@ -66,10 +64,7 @@ export function LeadLayout() {
 
   const showCompanion = hasTeammates && !isCollapsed
 
-  const classes = [
-    'lead-layout',
-    !showCompanion ? 'companion-collapsed' : ''
-  ]
+  const classes = ['lead-layout', !showCompanion ? 'companion-collapsed' : '']
     .filter(Boolean)
     .join(' ')
 

@@ -19,12 +19,16 @@ export class PtyManager extends EventEmitter {
   private agentIdToPaneId = new Map<string, string>()
   private outputBuffers = new Map<string, PtyOutputBuffer>()
 
-  async createPty(config: AgentConfig, cwd: string, extraEnv?: Record<string, string>): Promise<AgentState> {
+  async createPty(
+    config: AgentConfig,
+    cwd: string,
+    extraEnv?: Record<string, string>
+  ): Promise<AgentState> {
     const id = `agent-${++this.idCounter}-${Date.now()}`
     const shell = process.env.SHELL || '/bin/zsh'
     const env = extraEnv
-      ? { ...process.env, ...extraEnv } as Record<string, string>
-      : process.env as Record<string, string>
+      ? ({ ...process.env, ...extraEnv } as Record<string, string>)
+      : (process.env as Record<string, string>)
 
     // If extraEnv has a custom PATH, prepend it in the command itself
     // so it survives login shell PATH resets from .zshrc

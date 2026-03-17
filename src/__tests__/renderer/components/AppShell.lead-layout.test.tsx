@@ -64,7 +64,10 @@ function makeLead(): AgentState {
   }
 }
 
-function makeState(overrides: Partial<ExtendedAppState['layout']> = {}, agents: AgentState[] = []): ExtendedAppState {
+function makeState(
+  overrides: Partial<ExtendedAppState['layout']> = {},
+  agents: AgentState[] = []
+): ExtendedAppState {
   const agentsMap = new Map<string, AgentState>()
   for (const a of agents) {
     agentsMap.set(a.id, a)

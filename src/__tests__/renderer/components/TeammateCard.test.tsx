@@ -30,7 +30,10 @@ beforeEach(() => {
   })
 })
 
-function renderCard(agent: AgentState, props: { isSelected?: boolean; onSelect?: () => void } = {}) {
+function renderCard(
+  agent: AgentState,
+  props: { isSelected?: boolean; onSelect?: () => void } = {}
+) {
   return render(
     <AppProvider>
       <TeammateCard

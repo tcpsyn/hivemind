@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-  appReducer,
-  initialAppState
-} from '../../../renderer/src/state/AppContext'
+import { appReducer, initialAppState } from '../../../renderer/src/state/AppContext'
 
 describe('AppContext - Lead Layout state', () => {
   describe('initialAppState', () => {

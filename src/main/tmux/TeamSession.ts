@@ -137,9 +137,12 @@ export class TeamSession extends EventEmitter {
   private wireServerEvents(): void {
     if (!this.server) return
 
-    this.server.on('send-keys', (paneId: string, sessionName: string, command: string, hasEnter: boolean) => {
-      this.handleSendKeys(paneId, sessionName, command, hasEnter)
-    })
+    this.server.on(
+      'send-keys',
+      (paneId: string, sessionName: string, command: string, hasEnter: boolean) => {
+        this.handleSendKeys(paneId, sessionName, command, hasEnter)
+      }
+    )
 
     this.server.on('session-killed', (name: string, paneIds: string[]) => {
       for (const paneId of paneIds) {
@@ -171,10 +174,13 @@ export class TeamSession extends EventEmitter {
     })
 
     // Forward PtyManager agent-spawned events
-    this.ptyManager.on('agent-spawned', (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
-      this.teammates.set(agentId, agent)
-      this.emit('teammate-spawned', agentId, agent, paneId, sessionName)
-    })
+    this.ptyManager.on(
+      'agent-spawned',
+      (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
+        this.teammates.set(agentId, agent)
+        this.emit('teammate-spawned', agentId, agent, paneId, sessionName)
+      }
+    )
 
     this.ptyManager.on('exit', (agentId: string, exitCode: number) => {
       const agent = this.teammates.get(agentId)
@@ -215,7 +221,12 @@ export class TeamSession extends EventEmitter {
     this.signalHandlers = []
   }
 
-  private async handleSendKeys(paneId: string, sessionName: string, command: string, hasEnter: boolean): Promise<void> {
+  private async handleSendKeys(
+    paneId: string,
+    sessionName: string,
+    command: string,
+    hasEnter: boolean
+  ): Promise<void> {
     // Check if this pane already has a PTY
     const existingAgent = this.ptyManager.getAgentByPaneId(paneId)
 
@@ -231,13 +242,7 @@ export class TeamSession extends EventEmitter {
       }
 
       try {
-        await this.ptyManager.createTeammatePty(
-          command,
-          this.projectPath,
-          env,
-          sessionName,
-          paneId
-        )
+        await this.ptyManager.createTeammatePty(command, this.projectPath, env, sessionName, paneId)
       } catch (err) {
         console.error(`Failed to spawn teammate for pane ${paneId}:`, err)
       }

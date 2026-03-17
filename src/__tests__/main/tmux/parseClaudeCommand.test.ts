@@ -37,9 +37,7 @@ describe('parseClaudeCommand', () => {
   })
 
   it('handles quoted values', () => {
-    const result = parseClaudeCommand(
-      'claude --agent-name "my researcher" --agent-color "#FF0000"'
-    )
+    const result = parseClaudeCommand('claude --agent-name "my researcher" --agent-color "#FF0000"')
     expect(result).toEqual({
       agentName: 'my researcher',
       agentColor: '#FF0000'

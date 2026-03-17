@@ -1,3 +1,41 @@
 #!/bin/bash
-# Fake tmux wrapper — routes to our Node.js shim
-exec node "$(dirname "$0")/../src/main/tmux/fake-tmux.js" "$@"
+# Tmux proxy wrapper — forwards ALL calls to real tmux, then notifies Electron app
+
+# Find real tmux binary
+REAL_TMUX="${REAL_TMUX:-}"
+if [ -z "$REAL_TMUX" ]; then
+  for p in /opt/homebrew/bin/tmux /usr/local/bin/tmux /usr/bin/tmux; do
+    if [ -x "$p" ]; then
+      REAL_TMUX="$p"
+      break
+    fi
+  done
+fi
+
+if [ -z "$REAL_TMUX" ] || [ ! -x "$REAL_TMUX" ]; then
+  echo "tmux proxy: cannot find real tmux binary" >&2
+  exit 1
+fi
+
+# Forward ALL arguments to real tmux and capture exit code
+"$REAL_TMUX" "$@"
+EXIT_CODE=$?
+
+# Notify Electron app about interesting commands (fire-and-forget)
+if [ -n "$CC_FRONTEND_SOCKET" ] && [ -S "$CC_FRONTEND_SOCKET" ]; then
+  CMD="${1:-}"
+  case "$CMD" in
+    new-window|split-window|send-keys|kill-pane|kill-session)
+      # Build JSON and send in background (doesn't block tmux return)
+      (
+        ARGS_JSON=$(python3 -c 'import sys,json; print(json.dumps(sys.argv[1:]))' "$@" 2>/dev/null)
+        if [ -n "$ARGS_JSON" ]; then
+          printf '{"event":"tmux-command","command":"%s","args":%s,"exitCode":%d}\n' \
+            "$CMD" "$ARGS_JSON" "$EXIT_CODE" | nc -U -w1 "$CC_FRONTEND_SOCKET" 2>/dev/null
+        fi
+      ) >/dev/null 2>&1 &
+      ;;
+  esac
+fi
+
+exit $EXIT_CODE

@@ -64,7 +64,7 @@ describe('TeamSession', () => {
       const env = session.getLeadEnv()
 
       expect(env.TMUX_PROGRAM).toBeDefined()
-      expect(env.TMUX_PROGRAM).toContain('fake-tmux.js')
+      expect(env.TMUX_PROGRAM).toMatch(/bin\/tmux$/)
       expect(env.CC_FRONTEND_SOCKET).toBeDefined()
       expect(env.TMUX).toBeDefined()
       expect(env.TMUX).toContain(env.CC_FRONTEND_SOCKET)

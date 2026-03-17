@@ -13,24 +13,6 @@ export default tseslint.config(
     }
   },
   {
-    files: ['src/main/tmux/fake-tmux.js'],
-    languageOptions: {
-      globals: {
-        require: 'readonly',
-        process: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        module: 'readonly',
-        exports: 'readonly'
-      }
-    },
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off'
-    }
-  },
-  {
     ignores: ['out/', 'dist/', 'node_modules/']
   }
 )

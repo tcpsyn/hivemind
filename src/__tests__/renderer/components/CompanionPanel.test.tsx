@@ -30,7 +30,10 @@ function makeTeammate(id: string, overrides: Partial<AgentState> = {}): AgentSta
   }
 }
 
-function makeStateWith(teammates: AgentState[], selectedId: string | null = null): ExtendedAppState {
+function makeStateWith(
+  teammates: AgentState[],
+  selectedId: string | null = null
+): ExtendedAppState {
   const agents = new Map<string, AgentState>()
   for (const t of teammates) {
     agents.set(t.id, t)
