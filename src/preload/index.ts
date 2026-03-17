@@ -78,7 +78,11 @@ const api: ElectronApi = {
   onAgentInputNeeded: createOnHandler(MainToRenderer.AGENT_INPUT_NEEDED),
   onFileChanged: createOnHandler(MainToRenderer.FILE_CHANGED),
   onFileTreeUpdate: createOnHandler(MainToRenderer.FILE_TREE_UPDATE),
-  onGitStatusUpdate: createOnHandler(MainToRenderer.GIT_STATUS_UPDATE)
+  onGitStatusUpdate: createOnHandler(MainToRenderer.GIT_STATUS_UPDATE),
+
+  // Menu events
+  onMenuTeamStart: createOnHandler<unknown>('menu:team-start'),
+  onMenuTeamStop: createOnHandler<void>('menu:team-stop')
 }
 
 if (process.contextIsolated) {

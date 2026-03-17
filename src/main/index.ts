@@ -1,6 +1,8 @@
-import { app, BrowserWindow, Menu, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
 import { join } from 'path'
+import { readFileSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
+import { parse as parseYaml } from 'yaml'
 import { PtyManager } from './pty/PtyManager'
 import { NotificationService } from './services/NotificationService'
 import { TeamConfigService } from './services/TeamConfigService'
@@ -137,8 +139,25 @@ function buildAppMenu(): void {
         {
           label: 'Start Team...',
           accelerator: 'CmdOrCtrl+Shift+S',
-          click: () => {
-            mainWindow?.webContents.send('menu:team-start')
+          click: async () => {
+            if (!mainWindow) return
+            const result = await dialog.showOpenDialog(mainWindow, {
+              title: 'Select Team Configuration',
+              defaultPath: join(app.getPath('home'), '.cc-frontend', 'teams'),
+              filters: [
+                { name: 'YAML', extensions: ['yml', 'yaml'] },
+                { name: 'All Files', extensions: ['*'] }
+              ],
+              properties: ['openFile']
+            })
+            if (result.canceled || result.filePaths.length === 0) return
+            try {
+              const content = readFileSync(result.filePaths[0], 'utf-8')
+              const config = parseYaml(content)
+              mainWindow.webContents.send('menu:team-start', config)
+            } catch (err) {
+              dialog.showErrorBox('Invalid Team Config', `Failed to parse: ${err}`)
+            }
           }
         },
         {

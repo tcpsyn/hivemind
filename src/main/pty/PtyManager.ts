@@ -16,9 +16,9 @@ export class PtyManager extends EventEmitter {
 
   async createPty(config: AgentConfig, cwd: string): Promise<AgentState> {
     const id = `agent-${++this.idCounter}-${Date.now()}`
-    const [command, ...args] = config.command.split(/\s+/)
+    const shell = process.env.SHELL || '/bin/zsh'
 
-    const term = pty.spawn(command, args, {
+    const term = pty.spawn(shell, ['-l', '-c', config.command], {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,

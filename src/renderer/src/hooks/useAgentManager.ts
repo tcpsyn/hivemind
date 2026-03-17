@@ -7,6 +7,25 @@ export function useAgentManager() {
   const [isTeamRunning, setIsTeamRunning] = useState(false)
   const agentIdsRef = useRef<Set<string>>(new Set())
 
+  // Listen for menu team start/stop
+  useEffect(() => {
+    if (!window.api?.onMenuTeamStart) return
+
+    const unsubStart = window.api.onMenuTeamStart((config: unknown) => {
+      const teamConfig = config as TeamConfig
+      startTeam(teamConfig)
+    })
+
+    const unsubStop = window.api.onMenuTeamStop?.(() => {
+      stopTeam()
+    })
+
+    return () => {
+      unsubStart()
+      unsubStop?.()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!window.api?.onAgentOutput) return
 
