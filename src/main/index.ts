@@ -52,16 +52,6 @@ function createWindow(): void {
     mainWindow!.show()
   })
 
-  // Set dock icon on macOS
-  if (process.platform === 'darwin') {
-    try {
-      const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.icns'))
-      app.dock.setIcon(icon)
-    } catch {
-      // icon may not exist in dev
-    }
-  }
-
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -306,17 +296,46 @@ function initializeServices(): void {
   registerIpcHandlers(ipcServices)
 }
 
+async function autoStartTeamSession(projectName: string, projectPath: string): Promise<void> {
+  if (!ipcServices) return
+  try {
+    await ipcServices.onTeamStart({
+      config: { name: projectName, project: projectPath, agents: [] }
+    })
+  } catch (err) {
+    console.error('Auto-start team session failed:', err)
+  }
+}
+
 // Set app name for dock/taskbar display (overrides "Electron" in dev mode)
 app.name = 'Hivemind'
 if (process.platform === 'darwin') {
   app.dock.setBadge('')
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Set dock icon before creating window
+  if (process.platform === 'darwin') {
+    try {
+      const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.png'))
+      if (!icon.isEmpty()) {
+        app.dock.setIcon(icon)
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   buildAppMenu()
   createWindow()
   initializeServices()
-  updateWindowTitle()
+
+  // Auto-start a team session pointed at the current directory
+  const projectPath = process.cwd()
+  const projectName = projectPath.split('/').pop() || 'project'
+  updateWindowTitle(projectName)
+
+  autoStartTeamSession(projectName, projectPath)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
