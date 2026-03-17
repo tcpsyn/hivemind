@@ -1,0 +1,153 @@
+.teammate-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  min-height: 60px;
+}
+
+.teammate-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.teammate-card.selected {
+  background: var(--bg-active);
+  border-color: var(--text-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.teammate-card.needs-input {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: var(--status-waiting);
+  animation: card-input-pulse 2s ease-in-out infinite;
+}
+
+@keyframes card-input-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 4px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+  }
+}
+
+.teammate-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.teammate-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.teammate-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.teammate-card-name {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teammate-card-type {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teammate-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.teammate-status-dot.running {
+  background: var(--status-running);
+}
+
+.teammate-status-dot.idle {
+  background: var(--status-idle);
+}
+
+.teammate-status-dot.waiting {
+  background: var(--status-waiting);
+}
+
+.teammate-status-dot.stopped {
+  background: var(--status-stopped);
+}
+
+.teammate-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.teammate-last-activity {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.teammate-card-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.btn-approve,
+.btn-deny {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.btn-approve {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--status-running);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.btn-approve:hover {
+  background: rgba(74, 222, 128, 0.25);
+}
+
+.btn-deny {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--status-stopped);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.btn-deny:hover {
+  background: rgba(248, 113, 113, 0.25);
+}

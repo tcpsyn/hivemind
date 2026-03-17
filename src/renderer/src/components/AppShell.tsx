@@ -8,6 +8,7 @@ import TopBar from './TopBar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
 import { PaneGrid } from './PaneGrid'
+import { LeadLayout } from './LeadLayout'
 import EditorView from './EditorView'
 import './AppShell.css'
 
@@ -33,7 +34,11 @@ export default function AppShell() {
         {state.layout.activeTab === 'agents' && (
           <ErrorBoundary fallbackLabel="Terminal grid error">
             {agents.length > 0 ? (
-              <PaneGrid agents={agents} />
+              state.layout.viewMode === 'lead' && state.layout.teamLeadId ? (
+                <LeadLayout />
+              ) : (
+                <PaneGrid agents={agents} />
+              )
             ) : (
               <div className="main-empty-state">
                 <span className="main-empty-text">No agents running</span>
