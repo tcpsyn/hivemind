@@ -86,6 +86,14 @@
         { "target": "zip" }
       ]
     },
+    "linux": {
+      "icon": "resources/icon.png",
+      "category": "Development",
+      "target": [
+        { "target": "AppImage" },
+        { "target": "deb" }
+      ]
+    },
     "extraResources": [
       {
         "from": "bin",
