@@ -162,7 +162,7 @@ function buildAppMenu(): void {
         },
         {
           label: 'Stop Team',
-          accelerator: 'CmdOrCtrl+Shift+Q',
+          accelerator: 'CmdOrCtrl+Shift+X',
           click: () => {
             mainWindow?.webContents.send('menu:team-stop')
           }
