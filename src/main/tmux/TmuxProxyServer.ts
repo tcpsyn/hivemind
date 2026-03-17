@@ -58,6 +58,7 @@ export class TmuxProxyServer extends EventEmitter {
   private execCommand: ExecCommand
   private pollIntervalMs: number
   private pendingNameLookups = new Map<string, ReturnType<typeof setTimeout>>()
+  private paneCaptureIntervals = new Map<string, ReturnType<typeof setInterval>>()
 
   constructor(
     socketPath: string,
@@ -124,6 +125,12 @@ export class TmuxProxyServer extends EventEmitter {
       clearTimeout(timeout)
     }
     this.pendingNameLookups.clear()
+
+    for (const [, interval] of this.paneCaptureIntervals) {
+      clearInterval(interval)
+    }
+    this.paneCaptureIntervals.clear()
+
     this.knownPanes.clear()
 
     return new Promise((resolve) => {
@@ -258,6 +265,7 @@ export class TmuxProxyServer extends EventEmitter {
         this.emit('teammate-detected', paneInfo)
 
         this.startPaneStreaming(paneId).catch(() => {})
+        this.startStatusPolling(paneId)
 
         // Schedule delayed name lookup (agent process needs time to start)
         this.scheduleNameLookup(paneId, parseInt(pidStr, 10))
@@ -272,6 +280,53 @@ export class TmuxProxyServer extends EventEmitter {
         this.emit('teammate-exited', { paneId })
       }
     }
+  }
+
+  private startStatusPolling(paneId: string): void {
+    // Poll the last few lines of the pane to extract Claude Code status info
+    // (model, context %, project name, branch)
+    const interval = setInterval(async () => {
+      try {
+        const { stdout } = await this.execCommand(
+          this.realTmuxPath,
+          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-S', '-3'])
+        )
+        const status = this.parseClaudeStatus(stdout)
+        if (status) {
+          this.emit('teammate-status-update', { paneId, ...status })
+        }
+      } catch {
+        // pane may be gone
+      }
+    }, 3000)
+
+    // Store with a prefixed key so it doesn't conflict with streaming intervals
+    this.paneCaptureIntervals.set(`status-${paneId}`, interval)
+  }
+
+  private parseClaudeStatus(output: string): { model?: string; contextPercent?: string; branch?: string; project?: string } | null {
+    // Claude Code status line looks like:
+    // cc_frontend  Opus 4.6  [████████████] 11%  ⌞ feature/branch
+    // or: cc_frontend  Opus 4.6 (1M context)  [████] 3%  ⌞ feature...
+    const lines = output.split('\n').filter(l => l.trim())
+    for (const line of lines) {
+      // Look for model pattern (Opus/Sonnet/Haiku + version)
+      const modelMatch = line.match(/(Opus|Sonnet|Haiku)\s+[\d.]+/)
+      if (modelMatch) {
+        const model = modelMatch[0]
+        const pctMatch = line.match(/(\d+)%/)
+        const contextPercent = pctMatch ? pctMatch[1] + '%' : undefined
+        // Project name is usually at the start
+        const projectMatch = line.match(/^\s*(\S+)\s+(?:Opus|Sonnet|Haiku)/)
+        const project = projectMatch ? projectMatch[1] : undefined
+        // Branch after ⌞ or /
+        const branchMatch = line.match(/[⌞/]\s*(.+?)\s*$/)
+        const branch = branchMatch ? branchMatch[1].trim() : undefined
+
+        return { model, contextPercent, project, branch }
+      }
+    }
+    return null
   }
 
   private scheduleNameLookup(paneId: string, pid: number): void {
@@ -396,6 +451,12 @@ export class TmuxProxyServer extends EventEmitter {
         }
       }
       this.paneStreams.delete(paneId)
+    }
+    // Clean up status polling
+    const statusInterval = this.paneCaptureIntervals.get(`status-${paneId}`)
+    if (statusInterval) {
+      clearInterval(statusInterval)
+      this.paneCaptureIntervals.delete(`status-${paneId}`)
     }
     const timeout = this.pendingNameLookups.get(paneId)
     if (timeout) {

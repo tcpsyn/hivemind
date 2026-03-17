@@ -78,6 +78,11 @@ export class TeamSession extends EventEmitter {
       '24'
     ])
 
+    // Disable tmux status bar — we show agent info in the app UI instead
+    await execFileAsync(this.realTmuxPath, [
+      '-L', this.tmuxSocketName, 'set-option', '-g', 'status', 'off'
+    ])
+
     // Get the TMUX env var value (socket_path,server_pid,session_idx)
     const { stdout: tmuxEnvValue } = await execFileAsync(this.realTmuxPath, [
       '-L',
@@ -219,6 +224,13 @@ export class TeamSession extends EventEmitter {
 
     this.proxyServer.on('teammate-output', ({ paneId, data }: { paneId: string; data: Buffer }) => {
       this.emit('teammate-output', paneId, data.toString())
+    })
+
+    this.proxyServer.on('teammate-status-update', (info: { paneId: string; model?: string; contextPercent?: string; branch?: string; project?: string }) => {
+      const agentId = this.paneIdToAgentId.get(info.paneId)
+      if (agentId) {
+        this.emit('teammate-status-update', agentId, info)
+      }
     })
 
     this.proxyServer.on('teammate-renamed', ({ paneId, name }: { paneId: string; name: string }) => {

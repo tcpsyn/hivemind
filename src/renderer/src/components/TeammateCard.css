@@ -89,6 +89,24 @@
   background: var(--status-running);
 }
 
+.teammate-status-dot.active {
+  animation: dot-pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 4px var(--status-running);
+}
+
+@keyframes dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 4px var(--status-running);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.4);
+    box-shadow: 0 0 8px var(--status-running);
+  }
+}
+
 .teammate-status-dot.idle {
   background: var(--status-idle);
 }
@@ -107,9 +125,24 @@
   justify-content: space-between;
 }
 
+.teammate-context {
+  color: var(--text-accent);
+  margin-left: 4px;
+}
+
+.teammate-branch {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
 .teammate-last-activity {
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .teammate-card-actions {

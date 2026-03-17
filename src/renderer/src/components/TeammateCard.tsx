@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import AgentAvatar from './AgentAvatar'
 import type { AgentState } from '../../../shared/types'
 import './TeammateCard.css'
@@ -19,6 +19,26 @@ function formatLastActivity(timestamp: number): string {
 }
 
 export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps) {
+  const [isActive, setIsActive] = useState(false)
+  const activeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastActivityRef = useRef(agent.lastActivity)
+
+  // Detect activity: when lastActivity timestamp changes, mark as active
+  // and clear after 3 seconds of no new activity
+  useEffect(() => {
+    if (agent.lastActivity !== lastActivityRef.current) {
+      lastActivityRef.current = agent.lastActivity
+      setIsActive(true)
+
+      if (activeTimeout.current) clearTimeout(activeTimeout.current)
+      activeTimeout.current = setTimeout(() => setIsActive(false), 3000)
+    }
+
+    return () => {
+      if (activeTimeout.current) clearTimeout(activeTimeout.current)
+    }
+  }, [agent.lastActivity])
+
   const handleApprove = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
@@ -61,14 +81,18 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
           <div className="teammate-card-name-row">
             <span className="teammate-card-name">{agent.name}</span>
             <span
-              className={`teammate-status-dot ${agent.status}`}
+              className={`teammate-status-dot ${agent.status}${isActive ? ' active' : ''}`}
               data-testid="teammate-status-dot"
             />
           </div>
-          <span className="teammate-card-type">{agent.agentType || agent.role}</span>
+          <span className="teammate-card-type">
+            {agent.model || agent.agentType || agent.role}
+            {agent.contextPercent && <span className="teammate-context"> {agent.contextPercent}</span>}
+          </span>
         </div>
       </div>
       <div className="teammate-card-footer">
+        {agent.branch && <span className="teammate-branch">{agent.branch}</span>}
         <span className="teammate-last-activity" data-testid="teammate-last-activity">
           {formatLastActivity(agent.lastActivity)}
         </span>

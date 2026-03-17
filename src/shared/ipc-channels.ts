@@ -19,6 +19,7 @@ export const MainToRenderer = {
   TEAM_TEAMMATE_SPAWNED: 'team:teammate-spawned',
   TEAM_TEAMMATE_EXITED: 'team:teammate-exited',
   TEAM_TEAMMATE_RENAMED: 'team:teammate-renamed',
+  TEAM_TEAMMATE_STATUS: 'team:teammate-status',
   TEAMMATE_OUTPUT: 'teammate:output'
 } as const
 
@@ -168,4 +169,12 @@ export interface TeammateRenamedPayload {
   agentId: string
   name: string
   paneId: string
+}
+
+export interface TeammateStatusPayload {
+  agentId: string
+  model?: string
+  contextPercent?: string
+  branch?: string
+  project?: string
 }

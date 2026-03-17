@@ -17,7 +17,8 @@ import {
   sendTeammateSpawned,
   sendTeammateExited,
   sendTeammateOutput,
-  sendTeammateRenamed
+  sendTeammateRenamed,
+  sendTeammateStatus
 } from './ipc/handlers'
 import { TeamSession } from './tmux/TeamSession'
 import type { IpcServices } from './ipc/handlers'
@@ -38,7 +39,7 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
     title: 'Hivemind',
-    icon: join(__dirname, '../../resources/icon.png'),
+    icon: join(__dirname, '../../resources/icon' + (process.platform === 'darwin' ? '.icns' : '.png')),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -53,9 +54,8 @@ function createWindow(): void {
 
   // Set dock icon on macOS
   if (process.platform === 'darwin') {
-    const iconPath = join(__dirname, '../../resources/icon.png')
     try {
-      const icon = nativeImage.createFromPath(iconPath)
+      const icon = nativeImage.createFromPath(join(__dirname, '../../resources/icon.icns'))
       app.dock.setIcon(icon)
     } catch {
       // icon may not exist in dev
@@ -242,6 +242,12 @@ function wireTeamSessionEvents(session: TeamSession): void {
       sendTeammateRenamed(mainWindow, { agentId, name, paneId })
     }
   })
+
+  session.on('teammate-status-update', (agentId: string, info: { model?: string; contextPercent?: string; branch?: string; project?: string }) => {
+    if (mainWindow) {
+      sendTeammateStatus(mainWindow, { agentId, ...info })
+    }
+  })
 }
 
 function initializeServices(): void {
@@ -298,6 +304,12 @@ function initializeServices(): void {
     onSessionCreated: (session) => wireTeamSessionEvents(session)
   })
   registerIpcHandlers(ipcServices)
+}
+
+// Set app name for dock/taskbar display (overrides "Electron" in dev mode)
+app.name = 'Hivemind'
+if (process.platform === 'darwin') {
+  app.dock.setBadge('')
 }
 
 app.whenReady().then(() => {

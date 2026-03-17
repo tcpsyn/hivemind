@@ -99,10 +99,41 @@ export function useAgentManager() {
       })
     })
 
+    const unsubStatus = window.api?.onTeammateStatus?.((payload) => {
+      dispatch({
+        type: 'UPDATE_AGENT',
+        payload: {
+          id: payload.agentId,
+          model: payload.model,
+          contextPercent: payload.contextPercent,
+          branch: payload.branch
+        }
+      })
+    })
+
+    // Track teammate activity from output events
+    const paneToAgentId = new Map<string, string>()
+    const unsubOutput = window.api?.onTeammateOutput?.((payload) => {
+      // Find agent ID for this pane
+      let agentId = paneToAgentId.get(payload.paneId)
+      if (!agentId) {
+        agentId = `tmux-${payload.paneId}`
+        paneToAgentId.set(payload.paneId, agentId)
+      }
+      if (agentIdsRef.current.has(agentId)) {
+        dispatch({
+          type: 'UPDATE_AGENT',
+          payload: { id: agentId, lastActivity: Date.now() }
+        })
+      }
+    })
+
     return () => {
       unsubSpawned?.()
       unsubExited?.()
       unsubRenamed?.()
+      unsubStatus?.()
+      unsubOutput?.()
     }
   }, [dispatch, state.layout.selectedTeammateId])
 

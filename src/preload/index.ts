@@ -90,6 +90,7 @@ const api: ElectronApi = {
   onTeammateSpawned: createOnHandler(MainToRenderer.TEAM_TEAMMATE_SPAWNED),
   onTeammateExited: createOnHandler(MainToRenderer.TEAM_TEAMMATE_EXITED),
   onTeammateRenamed: createOnHandler(MainToRenderer.TEAM_TEAMMATE_RENAMED),
+  onTeammateStatus: createOnHandler(MainToRenderer.TEAM_TEAMMATE_STATUS),
   onTeammateOutput: createOnHandler(MainToRenderer.TEAMMATE_OUTPUT),
   sendTeammateInput: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_INPUT, req),
 

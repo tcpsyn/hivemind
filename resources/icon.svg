@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#6C3CE9;stop-opacity:1" />
@@ -13,33 +13,33 @@
       <stop offset="100%" style="stop-color:#A78BFA;stop-opacity:0.9" />
     </linearGradient>
   </defs>
-  <!-- Background rounded square -->
-  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <!-- macOS-style rounded rect with padding -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
   <!-- Center hexagon (lead agent) -->
-  <polygon points="256,140 316,170 316,230 256,260 196,230 196,170" fill="url(#glow)" stroke="#E9D5FF" stroke-width="2"/>
+  <polygon points="512,340 572,370 572,430 512,460 452,430 452,370" fill="url(#glow)" stroke="#E9D5FF" stroke-width="3"/>
   <!-- Top-left hex -->
-  <polygon points="196,80 256,110 256,170 196,200 136,170 136,110" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="452,280 512,310 512,370 452,400 392,370 392,310" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Top-right hex -->
-  <polygon points="316,80 376,110 376,170 316,200 256,170 256,110" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="572,280 632,310 632,370 572,400 512,370 512,310" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Left hex -->
-  <polygon points="136,170 196,200 196,260 136,290 76,260 76,200" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="392,370 452,400 452,460 392,490 332,460 332,400" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Right hex -->
-  <polygon points="376,170 436,200 436,260 376,290 316,260 316,200" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="632,370 692,400 692,460 632,490 572,460 572,400" fill="url(#hex)" opacity="0.7" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Bottom-left hex -->
-  <polygon points="196,260 256,290 256,350 196,380 136,350 136,290" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="452,460 512,490 512,550 452,580 392,550 392,490" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Bottom-right hex -->
-  <polygon points="316,260 376,290 376,350 316,380 256,350 256,290" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="572,460 632,490 632,550 572,580 512,550 512,490" fill="url(#hex)" opacity="0.85" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Bottom hex -->
-  <polygon points="256,350 316,380 316,440 256,470 196,440 196,380" fill="url(#hex)" opacity="0.6" stroke="#C4B5FD" stroke-width="1.5"/>
+  <polygon points="512,550 572,580 572,640 512,670 452,640 452,580" fill="url(#hex)" opacity="0.6" stroke="#C4B5FD" stroke-width="2"/>
   <!-- Connection dots on center hex -->
-  <circle cx="256" cy="200" r="6" fill="#F5F3FF"/>
-  <circle cx="226" cy="185" r="4" fill="#E9D5FF"/>
-  <circle cx="286" cy="185" r="4" fill="#E9D5FF"/>
-  <circle cx="226" cy="215" r="4" fill="#E9D5FF"/>
-  <circle cx="286" cy="215" r="4" fill="#E9D5FF"/>
+  <circle cx="512" cy="400" r="8" fill="#F5F3FF"/>
+  <circle cx="482" cy="385" r="5" fill="#E9D5FF"/>
+  <circle cx="542" cy="385" r="5" fill="#E9D5FF"/>
+  <circle cx="482" cy="415" r="5" fill="#E9D5FF"/>
+  <circle cx="542" cy="415" r="5" fill="#E9D5FF"/>
   <!-- Pulse lines from center -->
-  <line x1="226" y1="185" x2="196" y2="170" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
-  <line x1="286" y1="185" x2="316" y2="170" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
-  <line x1="226" y1="215" x2="196" y2="230" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
-  <line x1="286" y1="215" x2="316" y2="230" stroke="#E9D5FF" stroke-width="1.5" opacity="0.6"/>
+  <line x1="482" y1="385" x2="452" y2="370" stroke="#E9D5FF" stroke-width="2" opacity="0.6"/>
+  <line x1="542" y1="385" x2="572" y2="370" stroke="#E9D5FF" stroke-width="2" opacity="0.6"/>
+  <line x1="482" y1="415" x2="452" y2="430" stroke="#E9D5FF" stroke-width="2" opacity="0.6"/>
+  <line x1="542" y1="415" x2="572" y2="430" stroke="#E9D5FF" stroke-width="2" opacity="0.6"/>
 </svg>

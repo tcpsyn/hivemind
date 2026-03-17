@@ -14,6 +14,9 @@ export interface AgentState {
   sessionName?: string
   isTeammate?: boolean
   agentType?: string
+  model?: string
+  contextPercent?: string
+  branch?: string
 }
 
 export interface PaneInfo {
