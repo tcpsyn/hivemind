@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import AgentList from './AgentList'
+import FileTree from './FileTree'
 import './Sidebar.css'
 
 export default function Sidebar() {
@@ -76,8 +77,8 @@ export default function Sidebar() {
             <span>Files</span>
           </button>
           {!filesCollapsed && (
-            <div className="sidebar-section-body" data-testid="files-placeholder">
-              <span className="placeholder-text">File tree will appear here</span>
+            <div className="sidebar-section-body" data-testid="files-section-body">
+              <FileTree />
             </div>
           )}
         </div>

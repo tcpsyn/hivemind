@@ -1,8 +1,35 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
 import Sidebar from '../../../renderer/src/components/Sidebar'
+
+beforeEach(() => {
+  Object.defineProperty(window, 'api', {
+    value: {
+      fileTreeRequest: vi.fn().mockResolvedValue([]),
+      onFileChanged: vi.fn(() => vi.fn()),
+      agentCreate: vi.fn(),
+      agentInput: vi.fn(),
+      agentStop: vi.fn(),
+      agentRestart: vi.fn(),
+      agentResize: vi.fn(),
+      fileRead: vi.fn(),
+      fileWrite: vi.fn(),
+      gitDiff: vi.fn(),
+      gitStatus: vi.fn(),
+      teamStart: vi.fn(),
+      teamStop: vi.fn(),
+      onAgentOutput: vi.fn(() => vi.fn()),
+      onAgentStatusChange: vi.fn(() => vi.fn()),
+      onAgentInputNeeded: vi.fn(() => vi.fn()),
+      onFileTreeUpdate: vi.fn(() => vi.fn()),
+      onGitStatusUpdate: vi.fn(() => vi.fn()),
+    },
+    writable: true,
+    configurable: true,
+  })
+})
 
 function renderSidebar() {
   return render(
@@ -57,9 +84,9 @@ describe('Sidebar', () => {
     expect(screen.getByTestId('agents-placeholder')).toBeInTheDocument()
   })
 
-  it('shows placeholder content for file tree', () => {
+  it('shows file tree component in files section', () => {
     renderSidebar()
-    expect(screen.getByTestId('files-placeholder')).toBeInTheDocument()
+    expect(screen.getByTestId('file-tree')).toBeInTheDocument()
   })
 
   it('resize handle triggers mouse events', () => {

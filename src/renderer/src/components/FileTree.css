@@ -1,0 +1,109 @@
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  user-select: none;
+  outline: none;
+}
+
+.file-tree-loading,
+.file-tree-empty {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: var(--font-size-xs);
+}
+
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 22px;
+  border-radius: var(--radius-sm);
+  margin: 0 2px;
+}
+
+.file-tree-item:hover {
+  background: var(--bg-hover);
+}
+
+.file-tree-item.focused {
+  background: var(--bg-active);
+  outline: 1px solid var(--border-focus);
+  outline-offset: -1px;
+}
+
+.file-tree-item-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.file-tree-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.git-status {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  width: 14px;
+  text-align: center;
+  line-height: 14px;
+}
+
+.git-status-modified {
+  color: #f0b27a;
+}
+
+.git-status-added {
+  color: #4ade80;
+}
+
+.git-status-deleted {
+  color: #f87171;
+}
+
+.git-status-untracked {
+  color: #9ca3af;
+}
+
+.file-tree-context-menu {
+  position: fixed;
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1) 0;
+  min-width: 140px;
+}
+
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-1) var(--space-3);
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
