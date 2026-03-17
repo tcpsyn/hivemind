@@ -198,6 +198,10 @@ function initializeServices(): void {
   const gitService = new GitService(process.cwd())
   const teamConfigService = new TeamConfigService(join(app.getPath('userData'), 'team-configs'))
 
+  ptyManager.on('error', (agentId: string, err: Error) => {
+    console.error(`Agent ${agentId} error:`, err.message)
+  })
+
   ptyManager.on('data', (agentId: string, data: string) => {
     if (mainWindow) {
       sendAgentOutput(mainWindow, { agentId, data })

@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { useTerminal } from '../hooks/useTerminal'
 import { useAppDispatch } from '../state/AppContext'
+import AgentAvatar from './AgentAvatar'
 import type { AgentState } from '../../../shared/types'
 import './TerminalPane.css'
 
@@ -25,9 +26,7 @@ export function TerminalPane({ agent }: TerminalPaneProps) {
         style={{ borderTopColor: agent.color }}
         onDoubleClick={() => dispatch({ type: 'MAXIMIZE_PANE', payload: agent.id })}
       >
-        <span className="pane-avatar" style={{ color: agent.color }}>
-          {agent.avatar}
-        </span>
+        <AgentAvatar avatar={agent.avatar} color={agent.color} size={20} />
         <span className="pane-name">{agent.name}</span>
         <span className="pane-role">{agent.role}</span>
         <span className={`status-dot ${agent.status}`} data-testid="status-dot" />
