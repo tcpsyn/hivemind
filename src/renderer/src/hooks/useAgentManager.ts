@@ -1,40 +1,61 @@
-import { useEffect, useCallback, useRef, useState } from 'react'
+import { useEffect, useCallback, useRef } from 'react'
 import { useAppDispatch, useAppState } from '../state/AppContext'
 import type { AgentState, TeamConfig } from '../../../shared/types'
 
 export function useAgentManager() {
   const dispatch = useAppDispatch()
   const state = useAppState()
-  const [isTeamRunning, setIsTeamRunning] = useState(false)
-  const agentIdsRef = useRef<Set<string>>(new Set())
-  const teamLeadSetRef = useRef(false)
+  const activeTabId = state.activeTabId
+
+  // Per-tab agent tracking: tabId → Set of agentIds
+  const tabAgentsRef = useRef<Map<string, Set<string>>>(new Map())
+  const teamLeadSetRef = useRef<Map<string, boolean>>(new Map())
   const selectedTeammateIdRef = useRef<string | null>(null)
   const startTeamRef = useRef<(config: TeamConfig) => Promise<void>>()
   const stopTeamRef = useRef<() => Promise<void>>()
 
+  function getAgentIds(tabId: string): Set<string> {
+    let set = tabAgentsRef.current.get(tabId)
+    if (!set) {
+      set = new Set()
+      tabAgentsRef.current.set(tabId, set)
+    }
+    return set
+  }
+
   // Keep refs in sync
-  selectedTeammateIdRef.current = state.layout.selectedTeammateId
+  const activeTab = state.tabs.get(activeTabId)
+  selectedTeammateIdRef.current = activeTab?.layout.selectedTeammateId ?? null
+
+  // Derive isTeamRunning from active tab state
+  const isTeamRunning = activeTab?.teamStatus === 'running'
 
   // Listen for auto-started team session from main process
   useEffect(() => {
-    const unsubAutoStart = window.api?.onTeamAutoStarted?.((data: { projectName: string; projectPath: string; agents: AgentState[] }) => {
-      dispatch({ type: 'SET_PROJECT', payload: { name: data.projectName, path: data.projectPath } })
-      for (const agent of data.agents) {
-        agentIdsRef.current.add(agent.id)
-        dispatch({ type: 'ADD_AGENT', payload: agent })
-        if (!teamLeadSetRef.current && !agent.isTeammate) {
-          dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id })
-          teamLeadSetRef.current = true
-        }
-      }
-      if (!teamLeadSetRef.current && data.agents.length > 0) {
-        dispatch({ type: 'SET_TEAM_LEAD', payload: data.agents[0].id })
-        teamLeadSetRef.current = true
-      }
-      setIsTeamRunning(true)
-    })
+    const unsubAutoStart = window.api?.onTeamAutoStarted?.(
+      (data: { tabId: string; projectName: string; projectPath: string; agents: AgentState[] }) => {
+        const tabId = data.tabId
+        const agentIds = getAgentIds(tabId)
 
-    return () => { unsubAutoStart?.() }
+        for (const agent of data.agents) {
+          agentIds.add(agent.id)
+          dispatch({ type: 'ADD_AGENT', payload: agent, tabId })
+          if (!teamLeadSetRef.current.get(tabId) && !agent.isTeammate) {
+            dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id, tabId })
+            teamLeadSetRef.current.set(tabId, true)
+          }
+        }
+        if (!teamLeadSetRef.current.get(tabId) && data.agents.length > 0) {
+          dispatch({ type: 'SET_TEAM_LEAD', payload: data.agents[0].id, tabId })
+          teamLeadSetRef.current.set(tabId, true)
+        }
+        dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId })
+      }
+    )
+
+    return () => {
+      unsubAutoStart?.()
+    }
   }, [dispatch])
 
   // Listen for menu team start/stop — use refs to avoid stale closures
@@ -56,25 +77,32 @@ export function useAgentManager() {
     }
   }, [])
 
+  // Listen for agent status changes — route by payload.tabId
   useEffect(() => {
     if (!window.api?.onAgentStatusChange) return
 
     const unsubStatus = window.api.onAgentStatusChange((payload) => {
-      if (!agentIdsRef.current.has(payload.agentId)) {
-        agentIdsRef.current.add(payload.agentId)
-        dispatch({ type: 'ADD_AGENT', payload: payload.agent })
+      const tabId = payload.tabId
+      const agentIds = getAgentIds(tabId)
+
+      if (!agentIds.has(payload.agentId)) {
+        agentIds.add(payload.agentId)
+        dispatch({ type: 'ADD_AGENT', payload: payload.agent, tabId })
       } else {
         dispatch({
           type: 'UPDATE_AGENT',
-          payload: { id: payload.agentId, status: payload.agent.status }
+          payload: { id: payload.agentId, status: payload.agent.status },
+          tabId
         })
       }
     })
 
     const unsubInput = window.api.onAgentInputNeeded((payload) => {
+      const tabId = payload.tabId
       dispatch({
         type: 'UPDATE_AGENT',
-        payload: { id: payload.agentId, needsInput: true }
+        payload: { id: payload.agentId, needsInput: true },
+        tabId
       })
 
       dispatch({
@@ -86,7 +114,8 @@ export function useAgentManager() {
           message: `${payload.agentName} needs input`,
           timestamp: Date.now(),
           read: false
-        }
+        },
+        tabId
       })
     })
 
@@ -96,37 +125,39 @@ export function useAgentManager() {
     }
   }, [dispatch])
 
-  // Listen for teammate spawned/exited events
-  // Uses selectedTeammateIdRef to avoid tearing down subscriptions on selection change
+  // Listen for teammate events — route by payload.tabId
   useEffect(() => {
-    // Build a reverse map from paneId to real agent ID for activity tracking
-    const paneToAgentId = new Map<string, string>()
+    const paneToAgent = new Map<string, { agentId: string; tabId: string }>()
 
     const unsubSpawned = window.api?.onTeammateSpawned?.((payload) => {
-      const agent = payload.agent
-      if (!agentIdsRef.current.has(agent.id)) {
-        agentIdsRef.current.add(agent.id)
-        dispatch({ type: 'ADD_AGENT', payload: agent })
+      const { tabId, agent } = payload
+      const agentIds = getAgentIds(tabId)
+
+      if (!agentIds.has(agent.id)) {
+        agentIds.add(agent.id)
+        dispatch({ type: 'ADD_AGENT', payload: agent, tabId })
       }
-      // Register paneId -> agentId mapping for activity tracking
       if (agent.paneId) {
-        paneToAgentId.set(agent.paneId, agent.id)
+        paneToAgent.set(agent.paneId, { agentId: agent.id, tabId })
       }
       // Auto-select first teammate
       if (!selectedTeammateIdRef.current) {
-        dispatch({ type: 'SELECT_TEAMMATE', payload: agent.id })
+        dispatch({ type: 'SELECT_TEAMMATE', payload: agent.id, tabId })
       }
     })
 
     const unsubExited = window.api?.onTeammateExited?.((payload) => {
-      dispatch({ type: 'REMOVE_AGENT', payload: payload.agentId })
-      agentIdsRef.current.delete(payload.agentId)
+      const { tabId, agentId } = payload
+      dispatch({ type: 'REMOVE_AGENT', payload: agentId, tabId })
+      const agentIds = getAgentIds(tabId)
+      agentIds.delete(agentId)
     })
 
     const unsubRenamed = window.api?.onTeammateRenamed?.((payload) => {
       dispatch({
         type: 'UPDATE_AGENT',
-        payload: { id: payload.agentId, name: payload.name }
+        payload: { id: payload.agentId, name: payload.name },
+        tabId: payload.tabId
       })
     })
 
@@ -138,18 +169,22 @@ export function useAgentManager() {
           model: payload.model,
           contextPercent: payload.contextPercent,
           branch: payload.branch
-        }
+        },
+        tabId: payload.tabId
       })
     })
 
-    // Track teammate activity from output events using real agent IDs
     const unsubOutput = window.api?.onTeammateOutput?.((payload) => {
-      const agentId = paneToAgentId.get(payload.paneId)
-      if (agentId && agentIdsRef.current.has(agentId)) {
-        dispatch({
-          type: 'UPDATE_AGENT',
-          payload: { id: agentId, lastActivity: Date.now() }
-        })
+      const entry = paneToAgent.get(payload.paneId)
+      if (entry) {
+        const agentIds = getAgentIds(entry.tabId)
+        if (agentIds.has(entry.agentId)) {
+          dispatch({
+            type: 'UPDATE_AGENT',
+            payload: { id: entry.agentId, lastActivity: Date.now() },
+            tabId: entry.tabId
+          })
+        }
       }
     })
 
@@ -164,54 +199,62 @@ export function useAgentManager() {
 
   const startTeam = useCallback(
     async (config: TeamConfig) => {
-      dispatch({ type: 'SET_PROJECT', payload: { name: config.name, path: config.project } })
+      const tabId = activeTabId
+      dispatch({ type: 'SET_TEAM_STATUS', payload: 'starting', tabId })
 
-      const result = await window.api.teamStart({ config })
+      const result = await window.api.teamStart({ tabId, config })
+      const agentIds = getAgentIds(tabId)
 
       for (const agent of result.agents) {
-        agentIdsRef.current.add(agent.id)
-        dispatch({ type: 'ADD_AGENT', payload: agent })
+        agentIds.add(agent.id)
+        dispatch({ type: 'ADD_AGENT', payload: agent, tabId })
 
-        // First non-teammate agent becomes team lead
-        if (!teamLeadSetRef.current && !agent.isTeammate) {
-          dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id })
-          teamLeadSetRef.current = true
+        if (!teamLeadSetRef.current.get(tabId) && !agent.isTeammate) {
+          dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id, tabId })
+          teamLeadSetRef.current.set(tabId, true)
         }
       }
 
-      // If no explicit non-teammate, use the first agent as lead
-      if (!teamLeadSetRef.current && result.agents.length > 0) {
-        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id })
-        teamLeadSetRef.current = true
+      if (!teamLeadSetRef.current.get(tabId) && result.agents.length > 0) {
+        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId })
+        teamLeadSetRef.current.set(tabId, true)
       }
 
-      setIsTeamRunning(true)
+      dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId })
     },
-    [dispatch]
+    [dispatch, activeTabId]
   )
 
   const stopTeam = useCallback(async () => {
-    await window.api.teamStop()
+    const tabId = activeTabId
+    await window.api.teamStop({ tabId })
 
-    for (const id of agentIdsRef.current) {
-      dispatch({ type: 'REMOVE_AGENT', payload: id })
+    const agentIds = getAgentIds(tabId)
+    for (const id of agentIds) {
+      dispatch({ type: 'REMOVE_AGENT', payload: id, tabId })
     }
-    agentIdsRef.current.clear()
-    teamLeadSetRef.current = false
-    setIsTeamRunning(false)
-  }, [dispatch])
+    agentIds.clear()
+    teamLeadSetRef.current.set(tabId, false)
+    dispatch({ type: 'SET_TEAM_STATUS', payload: 'stopped', tabId })
+  }, [dispatch, activeTabId])
 
   // Keep refs in sync for menu handler closures
   startTeamRef.current = startTeam
   stopTeamRef.current = stopTeam
 
-  const stopAgent = useCallback(async (agentId: string) => {
-    await window.api.agentStop({ agentId })
-  }, [])
+  const stopAgent = useCallback(
+    async (agentId: string) => {
+      await window.api.agentStop({ tabId: activeTabId, agentId })
+    },
+    [activeTabId]
+  )
 
-  const restartAgent = useCallback(async (agentId: string) => {
-    await window.api.agentRestart({ agentId })
-  }, [])
+  const restartAgent = useCallback(
+    async (agentId: string) => {
+      await window.api.agentRestart({ tabId: activeTabId, agentId })
+    },
+    [activeTabId]
+  )
 
   return {
     startTeam,

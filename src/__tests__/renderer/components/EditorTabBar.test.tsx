@@ -3,11 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   AppProvider,
-  initialAppState,
-  type ExtendedAppState
+  initialAppState
 } from '../../../renderer/src/state/AppContext'
 import EditorTabBar from '../../../renderer/src/components/EditorTabBar'
-import type { EditorTab } from '../../../shared/types'
+import type { EditorTab, AppState } from '../../../shared/types'
 
 function createTab(overrides: Partial<EditorTab> = {}): EditorTab {
   return {
@@ -22,13 +21,16 @@ function createTab(overrides: Partial<EditorTab> = {}): EditorTab {
 }
 
 function renderWithTabs(tabs: EditorTab[], activeFileId: string | null = null) {
-  const stateWithTabs: ExtendedAppState = {
-    ...initialAppState,
+  const defaultTab = initialAppState.tabs.get('tab-default')!
+  const tabsMap = new Map(initialAppState.tabs)
+  tabsMap.set('tab-default', {
+    ...defaultTab,
     editor: {
       openFiles: tabs,
       activeFileId: activeFileId ?? (tabs.length > 0 ? tabs[0].id : null)
     }
-  }
+  })
+  const stateWithTabs: AppState = { ...initialAppState, tabs: tabsMap }
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     return <AppProvider initialState={stateWithTabs}>{children}</AppProvider>

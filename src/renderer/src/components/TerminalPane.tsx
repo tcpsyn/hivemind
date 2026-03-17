@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useTerminal } from '../hooks/useTerminal'
-import { useAppDispatch } from '../state/AppContext'
+import { useAppDispatch, useAppState } from '../state/AppContext'
 import AgentAvatar from './AgentAvatar'
 import type { AgentState } from '../../../shared/types'
 import './TerminalPane.css'
@@ -12,7 +12,8 @@ interface TerminalPaneProps {
 export function TerminalPane({ agent }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const dispatch = useAppDispatch()
-  useTerminal(agent.id, containerRef)
+  const { activeTabId } = useAppState()
+  useTerminal(activeTabId, agent.id, containerRef)
 
   const paneClasses = ['terminal-pane', agent.needsInput ? 'needs-input' : '']
     .filter(Boolean)
@@ -24,7 +25,7 @@ export function TerminalPane({ agent }: TerminalPaneProps) {
         className="pane-header"
         data-testid="pane-header"
         style={{ borderTopColor: agent.color }}
-        onDoubleClick={() => dispatch({ type: 'MAXIMIZE_PANE', payload: agent.id })}
+        onDoubleClick={() => dispatch({ type: 'MAXIMIZE_PANE', payload: agent.id, tabId: activeTabId })}
       >
         <AgentAvatar avatar={agent.avatar} color={agent.color} size={20} />
         <span className="pane-name">{agent.name}</span>

@@ -81,22 +81,43 @@ export interface AppNotification {
 
 export type ActiveTab = 'agents' | 'editor' | 'git'
 
-export interface AppState {
-  project: {
-    path: string
-    name: string
-  }
+export type TeamStatus = 'stopped' | 'starting' | 'running'
+
+export type ViewMode = 'lead' | 'grid'
+
+export interface TabLayout {
+  gridConfig: GridConfig
+  maximizedPaneId: string | null
+  viewMode: ViewMode
+  teamLeadId: string | null
+  selectedTeammateId: string | null
+  companionPanelCollapsed: boolean
+}
+
+export interface ProjectTab {
+  id: string
+  projectPath: string
+  projectName: string
   agents: Map<string, AgentState>
-  layout: {
-    sidebarWidth: number
-    gridConfig: GridConfig
-    activeTab: ActiveTab
-  }
+  layout: TabLayout
   editor: {
     openFiles: EditorTab[]
     activeFileId: string | null
   }
   notifications: AppNotification[]
+  teamStatus: TeamStatus
+}
+
+export interface AppState {
+  tabs: Map<string, ProjectTab>
+  activeTabId: string
+  activeFeatureTab: ActiveTab
+  recentProjects: string[]
+  globalLayout: {
+    tabOrder: string[]
+    sidebarWidth: number
+    sidebarCollapsed: boolean
+  }
 }
 
 export interface FileChangeEvent {

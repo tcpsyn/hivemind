@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { useAppState, useAppDispatch } from '../state/AppContext'
+import { useAppState, useAppDispatch, useActiveTab } from '../state/AppContext'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useLayoutPersistence, createLocalStorage } from '../hooks/useLayoutPersistence'
 import { useAgentManager } from '../hooks/useAgentManager'
@@ -17,12 +17,13 @@ const storage = createLocalStorage()
 export default function AppShell() {
   const state = useAppState()
   const dispatch = useAppDispatch()
+  const activeTab = useActiveTab()
 
   useKeyboardShortcuts()
   useLayoutPersistence(storage)
   const { stopAgent, restartAgent } = useAgentManager()
 
-  const agents = useMemo(() => Array.from(state.agents.values()), [state.agents])
+  const agents = useMemo(() => Array.from(activeTab.agents.values()), [activeTab.agents])
 
   const handleAgentContextMenu = useCallback(
     (agentId: string, action: string) => {
@@ -45,10 +46,10 @@ export default function AppShell() {
         <Sidebar onAgentContextMenu={handleAgentContextMenu} />
       </ErrorBoundary>
       <div className="main-content" data-testid="main-content">
-        {state.layout.activeTab === 'agents' && (
+        {state.activeFeatureTab === 'agents' && (
           <ErrorBoundary fallbackLabel="Terminal grid error">
             {agents.length > 0 ? (
-              state.layout.viewMode === 'lead' && state.layout.teamLeadId ? (
+              activeTab.layout.viewMode === 'lead' && activeTab.layout.teamLeadId ? (
                 <LeadLayout />
               ) : (
                 <PaneGrid agents={agents} />
@@ -61,12 +62,12 @@ export default function AppShell() {
             )}
           </ErrorBoundary>
         )}
-        {state.layout.activeTab === 'editor' && (
+        {state.activeFeatureTab === 'editor' && (
           <ErrorBoundary fallbackLabel="Editor error">
             <EditorView />
           </ErrorBoundary>
         )}
-        {state.layout.activeTab === 'git' && (
+        {state.activeFeatureTab === 'git' && (
           <div className="main-empty-state">
             <span className="main-empty-text">Git integration coming soon</span>
             <span className="main-empty-hint">Branch, diff, and commit management</span>
@@ -78,9 +79,9 @@ export default function AppShell() {
         className="sidebar-toggle"
         data-testid="sidebar-toggle"
         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-        title={state.layout.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        title={state.globalLayout.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {state.layout.sidebarCollapsed ? '\u25b6' : '\u25c0'}
+        {state.globalLayout.sidebarCollapsed ? '\u25b6' : '\u25c0'}
       </button>
     </div>
   )

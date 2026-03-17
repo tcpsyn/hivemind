@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useRef, useState } from 'react'
-import { useAppState } from '../state/AppContext'
+import { useActiveTab } from '../state/AppContext'
 import { TerminalPane } from './TerminalPane'
 import { CompanionPanel } from './CompanionPanel'
 import type { AgentState } from '../../../shared/types'
@@ -8,24 +8,24 @@ import './LeadLayout.css'
 const MIN_COMPANION_WIDTH = 280
 
 export function LeadLayout() {
-  const state = useAppState()
+  const activeTab = useActiveTab()
   const containerRef = useRef<HTMLDivElement>(null)
   const [companionWidth, setCompanionWidth] = useState<number | null>(null)
   const isDragging = useRef(false)
 
   const leadAgent = useMemo(() => {
-    const id = state.layout.teamLeadId
+    const id = activeTab.layout.teamLeadId
     if (!id) return null
-    return state.agents.get(id) ?? null
-  }, [state.layout.teamLeadId, state.agents])
+    return activeTab.agents.get(id) ?? null
+  }, [activeTab.layout.teamLeadId, activeTab.agents])
 
   const teammates = useMemo(() => {
-    const id = state.layout.teamLeadId
-    return Array.from(state.agents.values()).filter((a: AgentState) => a.id !== id && a.isTeammate)
-  }, [state.agents, state.layout.teamLeadId])
+    const id = activeTab.layout.teamLeadId
+    return Array.from(activeTab.agents.values()).filter((a: AgentState) => a.id !== id && a.isTeammate)
+  }, [activeTab.agents, activeTab.layout.teamLeadId])
 
   const hasTeammates = teammates.length > 0
-  const isCollapsed = state.layout.companionPanelCollapsed
+  const isCollapsed = activeTab.layout.companionPanelCollapsed
 
   const handleDividerMouseDown = useCallback(
     (e: React.MouseEvent) => {

@@ -1,9 +1,14 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import { TERMINAL_THEME } from '../../../shared/constants'
+import {
+  getOrCreateTerminal,
+  attachTerminal,
+  detachTerminal
+} from '../terminal/TerminalRegistry'
 
 export function useTeammateTerminal(
+  tabId: string,
   paneId: string,
   containerRef: RefObject<HTMLDivElement | null>
 ) {
@@ -13,51 +18,49 @@ export function useTeammateTerminal(
   useEffect(() => {
     if (!containerRef.current) return
 
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
-      theme: TERMINAL_THEME,
-      allowTransparency: false,
-      scrollback: 10000
-    })
+    const termId = `teammate:${paneId}`
 
-    const fitAddon = new FitAddon()
-    term.loadAddon(fitAddon)
-    term.open(containerRef.current)
+    const entry = getOrCreateTerminal(
+      tabId,
+      termId,
+      { cursorBlink: true },
+      (term) => {
+        // IPC output subscription — stays active even when detached from DOM
+        const unsubscribe = window.api.onTeammateOutput((payload) => {
+          if (payload.paneId === paneId && payload.tabId === tabId) {
+            term.write(payload.data)
+          }
+        })
 
-    try {
-      fitAddon.fit()
-    } catch {
-      // fit may fail if container has no dimensions yet
-    }
-
-    termRef.current = term
-    fitRef.current = fitAddon
-
-    // Subscribe to teammate output (filtered by paneId)
-    // Output is streamed incrementally via pipe-pane
-    const unsubscribe = window.api.onTeammateOutput((payload) => {
-      if (payload.paneId === paneId) {
-        term.write(payload.data)
+        return unsubscribe
       }
+    )
+
+    termRef.current = entry.terminal
+    fitRef.current = entry.fitAddon
+
+    // Attach to DOM (open or re-attach)
+    attachTerminal(tabId, termId, containerRef.current)
+
+    // Input handler — only active while attached
+    const dataDisposable = entry.terminal.onData((data) => {
+      window.api.sendTeammateInput({ tabId, paneId, data })
     })
 
-    // Send keyboard input to teammate's tmux pane
-    const dataDisposable = term.onData((data) => {
-      window.api.sendTeammateInput({ paneId, data })
-    })
-
-    // Handle resize — fit terminal and resize tmux pane to match
+    // Resize observer — only active while attached
     let lastCols = 0
     let lastRows = 0
     const resizeObserver = new ResizeObserver(() => {
       try {
-        fitAddon.fit()
-        if (term.cols && term.rows && (term.cols !== lastCols || term.rows !== lastRows)) {
-          lastCols = term.cols
-          lastRows = term.rows
-          window.api.teammateResize?.({ paneId, cols: term.cols, rows: term.rows })
+        entry.fitAddon.fit()
+        if (
+          entry.terminal.cols &&
+          entry.terminal.rows &&
+          (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
+        ) {
+          lastCols = entry.terminal.cols
+          lastRows = entry.terminal.rows
+          window.api.teammateResize?.({ tabId, paneId, cols: lastCols, rows: lastRows })
         }
       } catch {
         // ignore resize errors
@@ -67,13 +70,11 @@ export function useTeammateTerminal(
 
     return () => {
       dataDisposable.dispose()
-      unsubscribe()
       resizeObserver.disconnect()
-      term.dispose()
-      termRef.current = null
-      fitRef.current = null
+      // Detach from DOM but keep terminal alive in registry
+      detachTerminal(tabId, termId)
     }
-  }, [paneId, containerRef])
+  }, [tabId, paneId, containerRef])
 
   return { termRef, fitRef }
 }

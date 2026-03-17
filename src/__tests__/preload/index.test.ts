@@ -70,6 +70,7 @@ describe('Preload bridge', () => {
         'fileRead', 'fileWrite', 'fileTreeRequest',
         'gitDiff',
         'teamStart', 'teamStop',
+        'tabCreate', 'tabClose',
         'sendTeammateInput', 'teammateResize'
       ]
 
@@ -151,8 +152,21 @@ describe('Preload bridge', () => {
     })
 
     it('teamStop invokes TEAM_STOP', async () => {
-      await api.teamStop()
-      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(RendererToMain.TEAM_STOP)
+      const req = { tabId: 'tab-1' }
+      await api.teamStop(req)
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(RendererToMain.TEAM_STOP, req)
+    })
+
+    it('tabCreate invokes TAB_CREATE', async () => {
+      const req = { projectPath: '/Users/test/project' }
+      await api.tabCreate(req)
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(RendererToMain.TAB_CREATE, req)
+    })
+
+    it('tabClose invokes TAB_CLOSE', async () => {
+      const req = { tabId: 'tab-1' }
+      await api.tabClose(req)
+      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith(RendererToMain.TAB_CLOSE, req)
     })
 
     it('sendTeammateInput invokes TEAMMATE_INPUT', async () => {

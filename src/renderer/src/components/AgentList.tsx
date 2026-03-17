@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useAppState } from '../state/AppContext'
+import { useActiveTab } from '../state/AppContext'
 import AgentListItem from './AgentListItem'
 import './AgentList.css'
 
@@ -8,16 +8,16 @@ interface AgentListProps {
 }
 
 export default function AgentList({ onAgentContextMenu }: AgentListProps) {
-  const state = useAppState()
+  const tab = useActiveTab()
 
   const sortedAgents = useMemo(() => {
-    const agents = Array.from(state.agents.values())
+    const agents = Array.from(tab.agents.values())
     return agents.sort((a, b) => {
       if (a.needsInput && !b.needsInput) return -1
       if (!a.needsInput && b.needsInput) return 1
       return 0
     })
-  }, [state.agents])
+  }, [tab.agents])
 
   return (
     <div className="agent-list" data-testid="agent-list">

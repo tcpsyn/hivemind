@@ -55,6 +55,33 @@ vi.mock('electron', () => ({
   BrowserWindow: vi.fn()
 }))
 
+// Mock TeamSession so onTeamStart/onTeamStop don't spawn real tmux
+vi.mock('../../../main/tmux/TeamSession', () => {
+  return {
+    TeamSession: vi.fn().mockImplementation(function (this: any) {
+      this.start = vi.fn().mockResolvedValue({
+        id: 'lead-1',
+        name: 'team-lead',
+        role: 'lead',
+        avatar: '',
+        color: '',
+        status: 'running',
+        needsInput: false,
+        lastActivity: Date.now(),
+        pid: 12345
+      })
+      this.stop = vi.fn().mockResolvedValue(undefined)
+      this.isRunning = vi.fn().mockReturnValue(true)
+      this.getServer = vi.fn().mockReturnValue(null)
+      this.getLeadAgent = vi.fn().mockReturnValue(null)
+      this.getTeammates = vi.fn().mockReturnValue([])
+      this.sendTeammateInput = vi.fn().mockResolvedValue(undefined)
+      this.on = vi.fn().mockReturnThis()
+      this.removeAllListeners = vi.fn().mockReturnThis()
+    })
+  }
+})
+
 function createMockWindow() {
   return {
     isDestroyed: () => false,
@@ -201,26 +228,41 @@ describe('Main Process Wiring', () => {
   })
 
   describe('createIpcServices factory', () => {
-    it('creates a valid IpcServices object', async () => {
+    async function createServicesWithMockPty() {
       const { createIpcServices } = await import('../../../main/services/createIpcServices')
 
       const services = createIpcServices({
-        ptyManager: ptyManager as never,
-        fileService: {
-          readFile: vi.fn().mockResolvedValue('content'),
-          writeFile: vi.fn().mockResolvedValue(undefined),
-          getFileTree: vi.fn().mockResolvedValue([]),
-        } as never,
-        gitService: {
-          getStatus: vi.fn().mockResolvedValue({ files: [], branch: 'main', ahead: 0, behind: 0 }),
-          getDiff: vi.fn().mockResolvedValue('diff'),
-        } as never,
         teamConfigService: {
           loadConfig: vi.fn(),
           enrichConfig: vi.fn((c: TeamConfig) => c)
-        } as never
+        } as never,
+        createTabServices: () => ({
+          ptyManager: ptyManager as never,
+          fileService: {
+            readFile: vi.fn().mockResolvedValue('content'),
+            writeFile: vi.fn().mockResolvedValue(undefined),
+            getFileTree: vi.fn().mockResolvedValue([])
+          } as never,
+          gitService: {
+            getStatus: vi.fn().mockResolvedValue({
+              files: [],
+              branch: 'main',
+              ahead: 0,
+              behind: 0
+            }),
+            getDiff: vi.fn().mockResolvedValue('diff')
+          } as never
+        })
       })
 
+      return services
+    }
+
+    it('creates a valid IpcServices object', async () => {
+      const services = await createServicesWithMockPty()
+
+      expect(typeof services.onTabCreate).toBe('function')
+      expect(typeof services.onTabClose).toBe('function')
       expect(typeof services.onAgentInput).toBe('function')
       expect(typeof services.onAgentStop).toBe('function')
       expect(typeof services.onAgentRestart).toBe('function')
@@ -234,23 +276,12 @@ describe('Main Process Wiring', () => {
     })
 
     it('onTeamStart creates TeamSession and returns lead agent', async () => {
-      const { createIpcServices } = await import('../../../main/services/createIpcServices')
+      const services = await createServicesWithMockPty()
 
-      const services = createIpcServices({
-        ptyManager: ptyManager as never,
-        fileService: {
-          readFile: vi.fn(),
-          writeFile: vi.fn(),
-          getFileTree: vi.fn().mockResolvedValue([]),
-        } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
-        teamConfigService: {
-          loadConfig: vi.fn(),
-          enrichConfig: vi.fn((c: TeamConfig) => c)
-        } as never
-      })
+      const tab = await services.onTabCreate({ projectPath: '/tmp' })
 
       const result = await services.onTeamStart({
+        tabId: tab.tabId,
         config: {
           name: 'test',
           project: '/tmp',
@@ -265,28 +296,17 @@ describe('Main Process Wiring', () => {
       expect(result.agents[0].name).toBe('team-lead')
 
       // Clean up the active session
-      await services.onTeamStop()
+      await services.onTeamStop({ tabId: tab.tabId })
     })
 
     it('onTeamStop destroys lead PTY and cleans up session', async () => {
-      const { createIpcServices } = await import('../../../main/services/createIpcServices')
+      const services = await createServicesWithMockPty()
 
-      const services = createIpcServices({
-        ptyManager: ptyManager as never,
-        fileService: {
-          readFile: vi.fn(),
-          writeFile: vi.fn(),
-          getFileTree: vi.fn().mockResolvedValue([]),
-        } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
-        teamConfigService: {
-          loadConfig: vi.fn(),
-          enrichConfig: vi.fn((c: TeamConfig) => c)
-        } as never
-      })
+      const tab = await services.onTabCreate({ projectPath: '/tmp' })
 
       // Start a team first so there's a session to stop
       await services.onTeamStart({
+        tabId: tab.tabId,
         config: {
           name: 'test',
           project: '/tmp',
@@ -294,29 +314,17 @@ describe('Main Process Wiring', () => {
         }
       })
 
-      await services.onTeamStop()
+      await services.onTeamStop({ tabId: tab.tabId })
       // TeamSession.stop() destroys individual PTYs
       expect(ptyManager.destroyPty).toHaveBeenCalled()
     })
 
     it('onAgentInput forwards input to PtyManager', async () => {
-      const { createIpcServices } = await import('../../../main/services/createIpcServices')
+      const services = await createServicesWithMockPty()
 
-      const services = createIpcServices({
-        ptyManager: ptyManager as never,
-        fileService: {
-          readFile: vi.fn(),
-          writeFile: vi.fn(),
-          getFileTree: vi.fn().mockResolvedValue([]),
-        } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
-        teamConfigService: {
-          loadConfig: vi.fn(),
-          enrichConfig: vi.fn((c: TeamConfig) => c)
-        } as never
-      })
+      const tab = await services.onTabCreate({ projectPath: '/tmp' })
 
-      await services.onAgentInput({ agentId: 'agent-1', data: 'yes\n' })
+      await services.onAgentInput({ tabId: tab.tabId, agentId: 'agent-1', data: 'yes\n' })
       expect(ptyManager.sendInput).toHaveBeenCalledWith('agent-1', 'yes\n')
     })
   })

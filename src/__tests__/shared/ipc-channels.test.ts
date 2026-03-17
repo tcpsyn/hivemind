@@ -42,6 +42,8 @@ describe('IPC channels', () => {
       expect(RendererToMain.TEAM_START).toBe('team:start')
       expect(RendererToMain.TEAM_STOP).toBe('team:stop')
       expect(RendererToMain.TEAMMATE_INPUT).toBe('teammate:input')
+      expect(RendererToMain.TAB_CREATE).toBe('tab:create')
+      expect(RendererToMain.TAB_CLOSE).toBe('tab:close')
     })
 
     it('has no duplicate channel names', () => {

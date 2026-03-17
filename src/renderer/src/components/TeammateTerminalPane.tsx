@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { useTeammateTerminal } from '../hooks/useTeammateTerminal'
+import { useAppState } from '../state/AppContext'
 import AgentAvatar from './AgentAvatar'
 import type { AgentState } from '../../../shared/types'
 import './TerminalPane.css'
@@ -10,7 +11,8 @@ interface TeammateTerminalPaneProps {
 
 export function TeammateTerminalPane({ agent }: TeammateTerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  useTeammateTerminal(agent.paneId!, containerRef)
+  const { activeTabId } = useAppState()
+  useTeammateTerminal(activeTabId, agent.paneId!, containerRef)
 
   const paneClasses = ['terminal-pane', agent.needsInput ? 'needs-input' : '']
     .filter(Boolean)

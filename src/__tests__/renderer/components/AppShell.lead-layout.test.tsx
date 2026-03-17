@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   AppProvider,
-  type ExtendedAppState,
-  initialAppState
+  initialAppState,
+  createProjectTab
 } from '../../../renderer/src/state/AppContext'
 import AppShell from '../../../renderer/src/components/AppShell'
-import type { AgentState } from '../../../shared/types'
+import type { AgentState, AppState, ProjectTab, TabLayout } from '../../../shared/types'
 
 vi.mock('../../../renderer/src/components/LeadLayout', () => ({
   LeadLayout: () => <div data-testid="lead-layout">Lead Layout</div>
@@ -65,20 +65,25 @@ function makeLead(): AgentState {
 }
 
 function makeState(
-  overrides: Partial<ExtendedAppState['layout']> = {},
+  layoutOverrides: Partial<TabLayout> = {},
   agents: AgentState[] = []
-): ExtendedAppState {
+): AppState {
   const agentsMap = new Map<string, AgentState>()
   for (const a of agents) {
     agentsMap.set(a.id, a)
   }
+
+  const defaultTab = createProjectTab('tab-default', '~', '~')
+  const tab: ProjectTab = {
+    ...defaultTab,
+    agents: agentsMap,
+    layout: { ...defaultTab.layout, ...layoutOverrides }
+  }
+
   return {
     ...initialAppState,
-    agents: agentsMap,
-    layout: {
-      ...initialAppState.layout,
-      ...overrides
-    }
+    tabs: new Map([['tab-default', tab]]),
+    activeTabId: 'tab-default'
   }
 }
 

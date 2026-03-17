@@ -15,6 +15,7 @@ export class FileExplorerService {
   private gitService: GitService | null = null
   private window: BrowserWindow | null = null
   private rootPath: string = ''
+  private tabId: string = ''
   private recentWrites = new Map<string, number>()
 
   constructor() {
@@ -22,9 +23,10 @@ export class FileExplorerService {
     this.fileWatcher = new FileWatcher()
   }
 
-  async start(rootPath: string, window: BrowserWindow): Promise<void> {
+  async start(rootPath: string, window: BrowserWindow, tabId: string): Promise<void> {
     this.rootPath = rootPath
     this.window = window
+    this.tabId = tabId
     this.gitService = new GitService(rootPath)
 
     this.fileWatcher.on('file-changed', (event) => {
@@ -74,12 +76,12 @@ export class FileExplorerService {
       return
     }
 
-    sendFileChanged(this.window, { event })
+    sendFileChanged(this.window, { tabId: this.tabId, event })
 
     // Refresh tree and push to renderer
     try {
       const tree = await this.getFileTree()
-      sendFileTreeUpdate(this.window, { tree })
+      sendFileTreeUpdate(this.window, { tabId: this.tabId, tree })
     } catch {
       // tree refresh failure is non-fatal
     }
@@ -88,7 +90,7 @@ export class FileExplorerService {
     try {
       if (this.gitService) {
         const status = await this.gitService.getStatus()
-        sendGitStatusUpdate(this.window, { status })
+        sendGitStatusUpdate(this.window, { tabId: this.tabId, status })
       }
     } catch {
       // git status failure is non-fatal

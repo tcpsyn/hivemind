@@ -1,5 +1,5 @@
 import { useMemo, useCallback, useRef, useState } from 'react'
-import { useAppState, useAppDispatch } from '../state/AppContext'
+import { useAppState, useAppDispatch, useActiveTab } from '../state/AppContext'
 import { TerminalPane } from './TerminalPane'
 import { TeammateTerminalPane } from './TeammateTerminalPane'
 import { TeammateCard } from './TeammateCard'
@@ -29,7 +29,8 @@ const MIN_TERMINAL_HEIGHT = 100
 export function CompanionPanel({ teammates }: CompanionPanelProps) {
   const state = useAppState()
   const dispatch = useAppDispatch()
-  const selectedId = state.layout.selectedTeammateId
+  const tab = useActiveTab()
+  const selectedId = tab.layout.selectedTeammateId
   const panelRef = useRef<HTMLDivElement>(null)
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null)
   const isDragging = useRef(false)
@@ -49,7 +50,7 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
 
   const handleSelect = useCallback(
     (agentId: string) => {
-      dispatch({ type: 'SELECT_TEAMMATE', payload: agentId })
+      dispatch({ type: 'SELECT_TEAMMATE', payload: agentId, tabId: state.activeTabId })
     },
     [dispatch]
   )
@@ -106,7 +107,7 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
         <div className="companion-dashboard-header">
           <span className="companion-dashboard-title">Teammates</span>
           <span className="companion-dashboard-count">{teammates.length}</span>
-          <CollapseButton onClick={() => dispatch({ type: 'TOGGLE_COMPANION' })} />
+          <CollapseButton onClick={() => dispatch({ type: 'TOGGLE_COMPANION', tabId: state.activeTabId })} />
         </div>
         <div className="companion-dashboard-list">
           {sortedTeammates.map((agent) => (

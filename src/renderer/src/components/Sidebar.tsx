@@ -42,13 +42,13 @@ export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
     [dispatch]
   )
 
-  const collapsed = state.layout.sidebarCollapsed
+  const collapsed = state.globalLayout.sidebarCollapsed
 
   return (
     <div
       className={`sidebar${collapsed ? ' collapsed' : ''}`}
       data-testid="sidebar"
-      style={{ width: collapsed ? 'var(--sidebar-min-width)' : state.layout.sidebarWidth }}
+      style={{ width: collapsed ? 'var(--sidebar-min-width)' : state.globalLayout.sidebarWidth }}
     >
       <div className="sidebar-content">
         <div

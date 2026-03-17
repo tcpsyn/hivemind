@@ -1,6 +1,50 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { EventEmitter } from 'events'
 import { existsSync } from 'fs'
-import { TeamSession } from '../../../main/tmux/TeamSession'
+
+// Mock TmuxProxyServer as an EventEmitter with start/stop/sendInput
+let mockProxyServer: EventEmitter & {
+  start: ReturnType<typeof vi.fn>
+  stop: ReturnType<typeof vi.fn>
+  sendInput: ReturnType<typeof vi.fn>
+}
+
+function createMockProxyServer() {
+  const server = new EventEmitter() as typeof mockProxyServer
+  server.start = vi.fn().mockResolvedValue(undefined)
+  server.stop = vi.fn().mockResolvedValue(undefined)
+  server.sendInput = vi.fn().mockResolvedValue(undefined)
+  return server
+}
+
+vi.mock('../../../main/tmux/TmuxProxyServer', () => ({
+  TmuxProxyServer: vi.fn(function () {
+    mockProxyServer = createMockProxyServer()
+    return mockProxyServer
+  })
+}))
+
+// Mock child_process.execFile to avoid real tmux calls
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('child_process')>()
+  return {
+    ...actual,
+    execFile: vi.fn(
+      (
+        _cmd: string,
+        _args: string[],
+        cb: (err: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        // Return a plausible TMUX env value and pane id
+        if (typeof _args[_args.length - 1] === 'string' && _args[_args.length - 1].includes('pane_id')) {
+          cb(null, '%0\n', '')
+        } else {
+          cb(null, '/tmp/tmux-501/socket,12345,0\n', '')
+        }
+      }
+    )
+  }
+})
 
 vi.mock('node-pty', () => {
   const mockPty = {
@@ -27,6 +71,8 @@ vi.mock('node-pty', () => {
     default: { spawn: vi.fn(() => mockPty) }
   }
 })
+
+import { TeamSession } from '../../../main/tmux/TeamSession'
 
 describe('TeamSession', () => {
   let session: TeamSession
@@ -83,18 +129,16 @@ describe('TeamSession', () => {
       await session.start()
       const socketPath = session.getSocketPath()
       expect(socketPath).toContain('hivemind-test-team')
-      expect(existsSync(socketPath)).toBe(true)
+      // Proxy server start was called (it would create the socket)
+      expect(mockProxyServer.start).toHaveBeenCalled()
     })
   })
 
   describe('stop', () => {
-    it('cleans up socket file', async () => {
+    it('cleans up via proxy server stop', async () => {
       await session.start()
-      const socketPath = session.getSocketPath()
-      expect(existsSync(socketPath)).toBe(true)
-
       await session.stop()
-      expect(existsSync(socketPath)).toBe(false)
+      expect(mockProxyServer.stop).toHaveBeenCalled()
       expect(session.isRunning()).toBe(false)
     })
 

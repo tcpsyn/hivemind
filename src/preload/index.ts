@@ -13,6 +13,10 @@ import type {
   GitDiffResponse,
   TeamStartRequest,
   TeamStartResponse,
+  TeamStopRequest,
+  TabCreateRequest,
+  TabCreateResponse,
+  TabCloseRequest,
   AgentOutputPayload,
   AgentStatusChangePayload,
   AgentInputNeededPayload,
@@ -40,7 +44,11 @@ export interface ElectronApi {
   fileTreeRequest: (req: FileTreeRequest) => Promise<FileTreeNode[]>
   gitDiff: (req: GitDiffRequest) => Promise<GitDiffResponse>
   teamStart: (req: TeamStartRequest) => Promise<TeamStartResponse>
-  teamStop: () => Promise<void>
+  teamStop: (req: TeamStopRequest) => Promise<void>
+
+  // Tab management
+  tabCreate: (req: TabCreateRequest) => Promise<TabCreateResponse>
+  tabClose: (req: TabCloseRequest) => Promise<void>
 
   // Main → Renderer (event listeners)
   onAgentOutput: (callback: (payload: AgentOutputPayload) => void) => () => void
@@ -58,7 +66,7 @@ export interface ElectronApi {
   teammateResize: (req: TeammateResizeRequest) => Promise<void>
 
   // Auto-start and menu events
-  onTeamAutoStarted: (callback: (payload: { projectName: string; projectPath: string; agents: AgentState[] }) => void) => () => void
+  onTeamAutoStarted: (callback: (payload: { tabId: string; projectName: string; projectPath: string; agents: AgentState[] }) => void) => () => void
   onMenuTeamStart: (callback: (config: unknown) => void) => () => void
   onMenuTeamStop: (callback: () => void) => () => void
 }
@@ -82,7 +90,11 @@ const api: ElectronApi = {
   fileTreeRequest: (req) => ipcRenderer.invoke(RendererToMain.FILE_TREE_REQUEST, req),
   gitDiff: (req) => ipcRenderer.invoke(RendererToMain.GIT_DIFF, req),
   teamStart: (req) => ipcRenderer.invoke(RendererToMain.TEAM_START, req),
-  teamStop: () => ipcRenderer.invoke(RendererToMain.TEAM_STOP),
+  teamStop: (req) => ipcRenderer.invoke(RendererToMain.TEAM_STOP, req),
+
+  // Tab management
+  tabCreate: (req) => ipcRenderer.invoke(RendererToMain.TAB_CREATE, req),
+  tabClose: (req) => ipcRenderer.invoke(RendererToMain.TAB_CLOSE, req),
 
   // Main → Renderer
   onAgentOutput: createOnHandler(MainToRenderer.AGENT_OUTPUT),
@@ -100,7 +112,7 @@ const api: ElectronApi = {
   teammateResize: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_RESIZE, req),
 
   // Auto-start event
-  onTeamAutoStarted: createOnHandler<{ projectName: string; projectPath: string; agents: unknown[] }>('team:auto-started'),
+  onTeamAutoStarted: createOnHandler<{ tabId: string; projectName: string; projectPath: string; agents: unknown[] }>('team:auto-started'),
 
   // Menu events
   onMenuTeamStart: createOnHandler<unknown>('menu:team-start'),

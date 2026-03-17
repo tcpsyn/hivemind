@@ -7,7 +7,6 @@ import {
   type LayoutStorage,
   createLocalStorage
 } from '../../../renderer/src/hooks/useLayoutPersistence'
-import type { GridConfig } from '../../../shared/types'
 
 function createMockStorage(): LayoutStorage {
   const store = new Map<string, string>()
@@ -53,11 +52,10 @@ describe('useLayoutPersistence', () => {
 
       act(() => result.current({ type: 'SET_SIDEBAR_WIDTH', payload: 300 }))
 
-      // Give debounce time to fire
       expect(storage.set).toHaveBeenCalled()
     })
 
-    it('persists active tab on change', () => {
+    it('persists active feature tab on change', () => {
       const wrapper = createWrapper(storage)
       const { result } = renderHook(
         () => {
@@ -67,23 +65,7 @@ describe('useLayoutPersistence', () => {
         { wrapper }
       )
 
-      act(() => result.current({ type: 'SET_ACTIVE_TAB', payload: 'editor' }))
-
-      expect(storage.set).toHaveBeenCalled()
-    })
-
-    it('persists grid config on change', () => {
-      const wrapper = createWrapper(storage)
-      const { result } = renderHook(
-        () => {
-          useLayoutPersistence(storage)
-          return useAppDispatch()
-        },
-        { wrapper }
-      )
-
-      const gridConfig: GridConfig = { layout: '2x2', columns: 2, rows: 2 }
-      act(() => result.current({ type: 'SET_LAYOUT', payload: { gridConfig } }))
+      act(() => result.current({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'editor' }))
 
       expect(storage.set).toHaveBeenCalled()
     })
@@ -108,8 +90,7 @@ describe('useLayoutPersistence', () => {
       const savedLayout = {
         sidebarWidth: 350,
         activeTab: 'editor' as const,
-        sidebarCollapsed: true,
-        gridConfig: { layout: '2x2' as const, columns: 2, rows: 2 }
+        sidebarCollapsed: true
       }
       ;(storage.get as ReturnType<typeof vi.fn>).mockReturnValue(savedLayout)
 
@@ -138,25 +119,6 @@ describe('useLayoutPersistence', () => {
       )
 
       expect(storage.get).toHaveBeenCalledWith('layout')
-    })
-
-    it('restores saved project info', () => {
-      const savedProject = { name: 'my-proj', path: '/path/to/proj' }
-      ;(storage.get as ReturnType<typeof vi.fn>).mockImplementation((key: string) => {
-        if (key === 'project') return savedProject
-        return undefined
-      })
-
-      const wrapper = createWrapper(storage)
-      renderHook(
-        () => {
-          useLayoutPersistence(storage)
-          return useAppState()
-        },
-        { wrapper }
-      )
-
-      expect(storage.get).toHaveBeenCalledWith('project')
     })
   })
 

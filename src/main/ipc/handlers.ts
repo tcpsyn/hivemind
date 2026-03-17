@@ -13,6 +13,10 @@ import type {
   GitDiffResponse,
   TeamStartRequest,
   TeamStartResponse,
+  TeamStopRequest,
+  TabCreateRequest,
+  TabCreateResponse,
+  TabCloseRequest,
   TeammateInputRequest,
   TeammateResizeRequest,
   AgentOutputPayload,
@@ -28,9 +32,11 @@ import type {
   TeammateStatusPayload
 } from '../../shared/ipc-channels'
 import type { FileTreeNode } from '../../shared/types'
-import type { TeamSession } from '../tmux/TeamSession'
+import type { TabContext } from '../services/createIpcServices'
 
 export interface IpcServices {
+  onTabCreate: (req: TabCreateRequest) => Promise<TabCreateResponse>
+  onTabClose: (req: TabCloseRequest) => Promise<void>
   onAgentInput: (req: AgentInputRequest) => Promise<void>
   onAgentStop: (req: AgentStopRequest) => Promise<void>
   onAgentRestart: (req: AgentRestartRequest) => Promise<void>
@@ -40,13 +46,21 @@ export interface IpcServices {
   onFileTreeRequest: (req: FileTreeRequest) => Promise<FileTreeNode[]>
   onGitDiff: (req: GitDiffRequest) => Promise<GitDiffResponse>
   onTeamStart: (req: TeamStartRequest) => Promise<TeamStartResponse>
-  onTeamStop: () => Promise<void>
+  onTeamStop: (req: TeamStopRequest) => Promise<void>
   onTeammateInput: (req: TeammateInputRequest) => Promise<void>
   onTeammateResize: (req: TeammateResizeRequest) => Promise<void>
-  getActiveSession?: () => TeamSession | null
+  getTab?: (tabId: string) => TabContext | null
+  getTabs?: () => Map<string, TabContext>
+  destroyAllTabs?: () => Promise<void>
 }
 
 export function registerIpcHandlers(services: IpcServices): void {
+  ipcMain.handle(RendererToMain.TAB_CREATE, (_event, req: TabCreateRequest) =>
+    services.onTabCreate(req)
+  )
+  ipcMain.handle(RendererToMain.TAB_CLOSE, (_event, req: TabCloseRequest) =>
+    services.onTabClose(req)
+  )
   ipcMain.handle(RendererToMain.AGENT_INPUT, (_event, req: AgentInputRequest) =>
     services.onAgentInput(req)
   )
@@ -72,7 +86,9 @@ export function registerIpcHandlers(services: IpcServices): void {
   ipcMain.handle(RendererToMain.TEAM_START, (_event, req: TeamStartRequest) =>
     services.onTeamStart(req)
   )
-  ipcMain.handle(RendererToMain.TEAM_STOP, () => services.onTeamStop())
+  ipcMain.handle(RendererToMain.TEAM_STOP, (_event, req: TeamStopRequest) =>
+    services.onTeamStop(req)
+  )
   ipcMain.handle(RendererToMain.TEAMMATE_INPUT, (_event, req: TeammateInputRequest) =>
     services.onTeammateInput(req)
   )
