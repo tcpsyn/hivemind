@@ -44,6 +44,21 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
         return
       }
 
+      if (mod && e.key === 'g') {
+        e.preventDefault()
+        dispatch({
+          type: 'SET_VIEW_MODE',
+          payload: state.layout.viewMode === 'lead' ? 'grid' : 'lead'
+        })
+        return
+      }
+
+      if (mod && e.key === '\\') {
+        e.preventDefault()
+        dispatch({ type: 'TOGGLE_COMPANION' })
+        return
+      }
+
       if (mod && e.key >= '1' && e.key <= '4') {
         e.preventDefault()
         const index = parseInt(e.key, 10) - 1
@@ -65,6 +80,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
     [
       dispatch,
       state.layout.activeTab,
+      state.layout.viewMode,
       state.editor.activeFileId,
       state.layout.maximizedPaneId,
       state.agents,
