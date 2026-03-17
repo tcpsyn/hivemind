@@ -41,8 +41,9 @@ export class TmuxProxyServer extends EventEmitter {
   private server: net.Server | null = null
   private socketPath: string
   private realTmuxPath: string
+  private tmuxSocketName: string | null
   private knownPanes = new Map<string, ProxyPaneInfo>()
-  private paneStreams = new Map<string, fs.ReadStream>()
+  private paneCaptureIntervals = new Map<string, ReturnType<typeof setInterval>>()
   private pollInterval: ReturnType<typeof setInterval> | null = null
   private leadPaneId: string
   private leadSessionName: string | null = null
@@ -54,16 +55,27 @@ export class TmuxProxyServer extends EventEmitter {
     realTmuxPath: string,
     options?: {
       leadPaneId?: string
+      leadSessionName?: string
       execCommand?: ExecCommand
       pollIntervalMs?: number
+      tmuxSocketName?: string
     }
   ) {
     super()
     this.socketPath = socketPath
     this.realTmuxPath = realTmuxPath
+    this.tmuxSocketName = options?.tmuxSocketName ?? null
     this.leadPaneId = options?.leadPaneId ?? '%0'
+    this.leadSessionName = options?.leadSessionName ?? null
     this.execCommand = options?.execCommand ?? defaultExecCommand
     this.pollIntervalMs = options?.pollIntervalMs ?? 2000
+  }
+
+  private tmuxArgs(args: string[]): string[] {
+    if (this.tmuxSocketName) {
+      return ['-L', this.tmuxSocketName, ...args]
+    }
+    return args
   }
 
   async start(): Promise<void> {
@@ -89,10 +101,10 @@ export class TmuxProxyServer extends EventEmitter {
       this.pollInterval = null
     }
 
-    for (const [, stream] of this.paneStreams) {
-      stream.destroy()
+    for (const [, interval] of this.paneCaptureIntervals) {
+      clearInterval(interval)
     }
-    this.paneStreams.clear()
+    this.paneCaptureIntervals.clear()
     this.knownPanes.clear()
 
     return new Promise((resolve) => {
@@ -157,14 +169,14 @@ export class TmuxProxyServer extends EventEmitter {
     // List panes only from the team's session
     let stdout: string
     try {
-      const result = await this.execCommand(this.realTmuxPath, [
+      const result = await this.execCommand(this.realTmuxPath, this.tmuxArgs([
         'list-panes',
         '-t',
         this.leadSessionName,
         '-a',
         '-F',
         '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
-      ])
+      ]))
       stdout = result.stdout
     } catch (err) {
       this.emit('error', err)
@@ -187,19 +199,20 @@ export class TmuxProxyServer extends EventEmitter {
       currentPaneIds.add(paneId)
 
       if (!this.knownPanes.has(paneId)) {
+        // Try to get a better name from the process command line
+        const agentName = await this.getAgentName(parseInt(pidStr, 10), windowName)
+
         const paneInfo: ProxyPaneInfo = {
           paneId,
           pid: parseInt(pidStr, 10),
-          windowName,
+          windowName: agentName,
           tty,
           sessionName
         }
         this.knownPanes.set(paneId, paneInfo)
         this.emit('teammate-detected', paneInfo)
 
-        if (tty) {
-          this.startPaneStreaming(paneId, tty).catch(() => {})
-        }
+        this.startPaneStreaming(paneId, tty).catch(() => {})
       }
     }
 
@@ -213,58 +226,64 @@ export class TmuxProxyServer extends EventEmitter {
     }
   }
 
-  async startPaneStreaming(paneId: string, ttyPath: string): Promise<void> {
+  async startPaneStreaming(paneId: string, _ttyPath: string): Promise<void> {
+    // Resize the tmux pane to a reasonable width for the companion panel
+    // (prevents hard line wraps at column 200)
     try {
-      const stream = fs.createReadStream(ttyPath)
-      this.paneStreams.set(paneId, stream)
-
-      stream.on('data', (data: Buffer) => {
-        this.emit('teammate-output', { paneId, data })
-      })
-
-      stream.on('error', () => {
-        this.paneStreams.delete(paneId)
-        this.startPipePaneFallback(paneId).catch(() => {})
-      })
+      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
+        'resize-pane', '-t', paneId, '-x', '80', '-y', '24'
+      ]))
     } catch {
-      await this.startPipePaneFallback(paneId)
+      // resize may fail for various reasons
     }
+
+    // Use capture-pane polling instead of TTY streaming.
+    const captureIntervalMs = 500
+    const lastCapture = { content: '' }
+
+    const interval = setInterval(async () => {
+      try {
+        const { stdout } = await this.execCommand(
+          this.realTmuxPath,
+          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-S', '-', '-J'])
+        )
+        if (stdout !== lastCapture.content) {
+          this.emit('teammate-output', { paneId, data: Buffer.from(stdout) })
+          lastCapture.content = stdout
+        }
+      } catch {
+        // Pane may have been destroyed
+      }
+    }, captureIntervalMs)
+
+    this.paneCaptureIntervals.set(paneId, interval)
   }
 
-  private async startPipePaneFallback(paneId: string): Promise<void> {
-    const safeId = paneId.replace('%', '')
-    const fifoPath = `/tmp/cc-frontend-pane-${safeId}.pipe`
-
+  private async getAgentName(pid: number, fallback: string): Promise<string> {
     try {
-      await this.execCommand('mkfifo', [fifoPath])
-      await this.execCommand(this.realTmuxPath, [
-        'pipe-pane',
-        '-t',
-        paneId,
-        '-o',
-        `cat >> ${fifoPath}`
+      // Look at child processes for the claude agent command
+      const { stdout } = await this.execCommand('ps', [
+        '-o', 'args=', '-p', String(pid)
       ])
+      // Also check children in case the shell spawned claude
+      const { stdout: childOut } = await this.execCommand('pgrep', [
+        '-P', String(pid), '-a'
+      ]).catch(() => ({ stdout: '' }))
 
-      const stream = fs.createReadStream(fifoPath)
-      this.paneStreams.set(paneId, stream)
-
-      stream.on('data', (data: Buffer) => {
-        this.emit('teammate-output', { paneId, data })
-      })
-
-      stream.on('error', () => {
-        this.paneStreams.delete(paneId)
-      })
+      const combined = stdout + '\n' + childOut
+      const nameMatch = combined.match(/--agent-name\s+(\S+)/)
+      if (nameMatch) return nameMatch[1]
     } catch {
-      // Both TTY and pipe-pane failed
+      // Fall through to fallback
     }
+    return fallback
   }
 
   private stopPaneStreaming(paneId: string): void {
-    const stream = this.paneStreams.get(paneId)
-    if (stream) {
-      stream.destroy()
-      this.paneStreams.delete(paneId)
+    const interval = this.paneCaptureIntervals.get(paneId)
+    if (interval) {
+      clearInterval(interval)
+      this.paneCaptureIntervals.delete(paneId)
     }
   }
 
@@ -286,7 +305,7 @@ export class TmuxProxyServer extends EventEmitter {
     }
 
     const escaped = data.replace(/"/g, '\\"')
-    await this.execCommand(this.realTmuxPath, ['send-keys', '-t', paneId, '-l', escaped])
+    await this.execCommand(this.realTmuxPath, this.tmuxArgs(['send-keys', '-t', paneId, '-l', escaped]))
   }
 
   private startPolling(): void {

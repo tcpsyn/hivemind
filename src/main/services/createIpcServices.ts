@@ -44,7 +44,7 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
       ptyManager.destroyPty(req.agentId)
 
       await ptyManager.createPty(
-        { name, role, command: `claude --role ${role}`, avatar, color },
+        { name, role, command: 'claude', avatar, color },
         process.cwd()
       )
     },

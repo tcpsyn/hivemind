@@ -60,19 +60,23 @@ describe('TeamSession', () => {
 
     it('sets correct environment variables for lead', async () => {
       await session.start()
-      const env = session.getLeadEnv()
 
-      // Proxy approach: PATH with bin/, CC_FRONTEND_SOCKET, REAL_TMUX
-      expect(env.PATH).toContain('bin')
-      expect(env.CC_FRONTEND_SOCKET).toBeDefined()
-      expect(env.CC_FRONTEND_SOCKET).toContain('cc-frontend-test-team')
-      expect(env.REAL_TMUX).toBeDefined()
-      expect(env.REAL_TMUX).toContain('tmux')
+      // Test without tmuxEnvValue (called standalone)
+      const envNoTmux = session.getLeadEnv()
+      expect(envNoTmux.PATH).toContain('bin')
+      expect(envNoTmux.CC_FRONTEND_SOCKET).toBeDefined()
+      expect(envNoTmux.CC_FRONTEND_SOCKET).toContain('cc-frontend-test-team')
+      expect(envNoTmux.REAL_TMUX).toBeDefined()
+      expect(envNoTmux.REAL_TMUX).toContain('tmux')
+      expect(envNoTmux.TMUX).toBeUndefined()
+      expect(envNoTmux.TMUX_PANE).toBeUndefined()
+      expect(envNoTmux.CC_TMUX_SOCKET).toBeDefined()
+      expect(envNoTmux.CC_TMUX_SOCKET).toContain('cc-frontend-test-team')
 
-      // Should NOT set fake TMUX env vars
-      expect(env.TMUX).toBeUndefined()
-      expect(env.TMUX_PANE).toBeUndefined()
-      expect(env.TMUX_PROGRAM).toBeUndefined()
+      // Test with tmuxEnvValue (as called during start)
+      const envWithTmux = session.getLeadEnv('/tmp/tmux-501/socket,12345,0')
+      expect(envWithTmux.TMUX).toBe('/tmp/tmux-501/socket,12345,0')
+      expect(envWithTmux.TMUX_PANE).toBe('%0')
     })
 
     it('creates socket file at expected path', async () => {

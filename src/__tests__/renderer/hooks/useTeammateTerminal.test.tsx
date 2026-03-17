@@ -8,6 +8,7 @@ const { mockTerminal, mockFitAddon, mockOnTeammateOutput, mockSendTeammateInput 
     const mockTerminal = {
       open: vi.fn(),
       write: vi.fn(),
+      reset: vi.fn(),
       dispose: vi.fn(),
       onData: vi.fn(() => ({ dispose: vi.fn() })),
       loadAddon: vi.fn(),
@@ -92,6 +93,7 @@ describe('useTeammateTerminal', () => {
     act(() => {
       outputCallback?.({ paneId: '%1', data: 'hello from tmux' })
     })
+    expect(mockTerminal.reset).toHaveBeenCalled()
     expect(mockTerminal.write).toHaveBeenCalledWith('hello from tmux')
   })
 

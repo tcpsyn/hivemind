@@ -1,10 +1,14 @@
 import { join } from 'path'
 import { tmpdir } from 'os'
 import { existsSync, readdirSync, unlinkSync } from 'fs'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { EventEmitter } from 'events'
 import { PtyManager } from '../pty/PtyManager'
 import { TmuxProxyServer, type ProxyPaneInfo } from './TmuxProxyServer'
 import type { AgentState } from '../../shared/types'
+
+const execFileAsync = promisify(execFile)
 
 const REAL_TMUX_PATHS = ['/opt/homebrew/bin/tmux', '/usr/local/bin/tmux', '/usr/bin/tmux']
 
@@ -12,6 +16,7 @@ export class TeamSession extends EventEmitter {
   private sessionName: string
   private projectPath: string
   private socketPath: string
+  private tmuxSocketName: string
   private proxyServer: TmuxProxyServer | null = null
   private ptyManager: PtyManager
   private leadAgent: AgentState | null = null
@@ -27,6 +32,7 @@ export class TeamSession extends EventEmitter {
     this.sessionName = sessionName
     this.projectPath = projectPath
     this.socketPath = join(tmpdir(), `cc-frontend-${sessionName}-${Date.now()}.sock`)
+    this.tmuxSocketName = `cc-frontend-${sessionName}-${Date.now()}`
     this.ptyManager = ptyManager ?? new PtyManager()
     this.realTmuxPath = TeamSession.findRealTmux()
   }
@@ -57,14 +63,42 @@ export class TeamSession extends EventEmitter {
   }
 
   async start(leadCommand?: string): Promise<AgentState> {
+    // Create a dedicated tmux server and session so Claude Code
+    // detects tmux and spawns agents as tmux panes (not subprocesses)
+    await execFileAsync(this.realTmuxPath, [
+      '-L',
+      this.tmuxSocketName,
+      'new-session',
+      '-d',
+      '-s',
+      this.sessionName,
+      '-x',
+      '200',
+      '-y',
+      '50'
+    ])
+
+    // Get the TMUX env var value (socket_path,server_pid,session_idx)
+    const { stdout: tmuxEnvValue } = await execFileAsync(this.realTmuxPath, [
+      '-L',
+      this.tmuxSocketName,
+      'display-message',
+      '-p',
+      '-t',
+      this.sessionName,
+      '#{socket_path},#{pid},0'
+    ])
+
     this.proxyServer = new TmuxProxyServer(this.socketPath, this.realTmuxPath, {
-      pollIntervalMs: 2000
+      pollIntervalMs: 2000,
+      tmuxSocketName: this.tmuxSocketName,
+      leadSessionName: this.sessionName
     })
     await this.proxyServer.start()
 
     this.wireServerEvents()
 
-    const leadEnv = this.getLeadEnv()
+    const leadEnv = this.getLeadEnv(tmuxEnvValue.trim())
     const leadAgent = await this.ptyManager.createPty(
       {
         name: 'team-lead',
@@ -101,6 +135,13 @@ export class TeamSession extends EventEmitter {
       this.proxyServer = null
     }
 
+    // Kill the dedicated tmux server
+    try {
+      await execFileAsync(this.realTmuxPath, ['-L', this.tmuxSocketName, 'kill-server'])
+    } catch {
+      // Server may already be dead
+    }
+
     this.running = false
   }
 
@@ -124,14 +165,24 @@ export class TeamSession extends EventEmitter {
     return this.proxyServer
   }
 
-  getLeadEnv(): Record<string, string> {
+  getLeadEnv(tmuxEnvValue?: string): Record<string, string> {
     const binDir = join(process.cwd(), 'bin')
     const currentPath = process.env.PATH || ''
-    return {
+    const env: Record<string, string> = {
       PATH: `${binDir}:${currentPath}`,
       CC_FRONTEND_SOCKET: this.socketPath,
-      REAL_TMUX: this.realTmuxPath
+      CC_TMUX_SOCKET: this.tmuxSocketName,
+      REAL_TMUX: this.realTmuxPath,
+      CLAUDECODE: '1',
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
     }
+    // Set TMUX so Claude Code detects it's "inside" tmux
+    // and spawns agents as tmux panes instead of subprocesses
+    if (tmuxEnvValue) {
+      env.TMUX = tmuxEnvValue
+      env.TMUX_PANE = '%0'
+    }
+    return env
   }
 
   async sendTeammateInput(paneId: string, data: string): Promise<void> {

@@ -52,10 +52,15 @@ describe('TmuxProxyServer', () => {
     }
   })
 
-  function createServer(opts?: { pollIntervalMs?: number; leadPaneId?: string }): TmuxProxyServer {
+  function createServer(opts?: {
+    pollIntervalMs?: number
+    leadPaneId?: string
+    leadSessionName?: string
+  }): TmuxProxyServer {
     server = new TmuxProxyServer(socketPath, '/usr/bin/tmux', {
       execCommand: mockExec,
       leadPaneId: opts?.leadPaneId ?? '%0',
+      leadSessionName: opts?.leadSessionName,
       pollIntervalMs: opts?.pollIntervalMs ?? 0 // Disable polling by default in tests
     })
     return server
@@ -115,10 +120,10 @@ describe('TmuxProxyServer', () => {
 
   describe('notification handling', () => {
     it('receives notification JSON and triggers pane discovery', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
-        if (args[0] === 'list-panes') {
+        if (args.includes('list-panes')) {
           return { stdout: '%1|1234|researcher|/dev/ttys001|main\n', stderr: '' }
         }
         return { stdout: '', stderr: '' }
@@ -275,7 +280,7 @@ describe('TmuxProxyServer', () => {
 
   describe('discoverPanes', () => {
     it('parses tmux list-panes output correctly', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       const output =
         [
@@ -310,7 +315,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('filters out the lead pane', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockResolvedValue({
         stdout: '%0|5000|lead|/dev/ttys000|main\n',
@@ -326,7 +331,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('uses custom lead pane ID for filtering', async () => {
-      createServer({ leadPaneId: '%5' })
+      createServer({ leadPaneId: '%5', leadSessionName: 'main' })
 
       const output = '%5|5000|lead|/dev/ttys000|main\n%6|5001|worker|/dev/ttys001|main\n'
       mockExec.mockResolvedValue({ stdout: output, stderr: '' })
@@ -341,7 +346,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('emits teammate-detected for new panes', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockResolvedValue({
         stdout: '%1|1234|worker|/dev/ttys001|main\n',
@@ -363,7 +368,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('does not re-emit for already known panes', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockResolvedValue({
         stdout: '%1|1234|worker|/dev/ttys001|main\n',
@@ -380,7 +385,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('emits teammate-exited when panes disappear', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       // First discover - pane exists
       mockExec.mockResolvedValueOnce({
@@ -401,7 +406,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('removes exited panes from known panes', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockResolvedValueOnce({
         stdout: '%1|1234|worker|/dev/ttys001|main\n',
@@ -418,21 +423,21 @@ describe('TmuxProxyServer', () => {
     })
 
     it('handles empty output gracefully', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
       mockExec.mockResolvedValue({ stdout: '', stderr: '' })
 
       await expect(server.discoverPanes()).resolves.not.toThrow()
     })
 
     it('handles whitespace-only output gracefully', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
       mockExec.mockResolvedValue({ stdout: '\n\n  \n', stderr: '' })
 
       await expect(server.discoverPanes()).resolves.not.toThrow()
     })
 
     it('emits error when tmux command fails', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
       mockExec.mockRejectedValue(new Error('tmux not running'))
 
       const errors: Error[] = []
@@ -445,7 +450,7 @@ describe('TmuxProxyServer', () => {
     })
 
     it('skips lines with insufficient fields', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
       mockExec.mockResolvedValue({
         stdout: '%1|1234\n%2|5678|coder|/dev/ttys002|main\n',
         stderr: ''
@@ -461,27 +466,42 @@ describe('TmuxProxyServer', () => {
     })
 
     it('calls tmux list-panes with correct arguments', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
       mockExec.mockResolvedValue({ stdout: '', stderr: '' })
 
       await server.discoverPanes()
 
       expect(mockExec).toHaveBeenCalledWith('/usr/bin/tmux', [
         'list-panes',
+        '-t',
+        'main',
         '-a',
         '-F',
         '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
       ])
     })
+
+    it('skips discovery when leadSessionName is not set', async () => {
+      createServer()
+      mockExec.mockResolvedValue({ stdout: '%1|1234|worker|/dev/ttys001|main\n', stderr: '' })
+
+      const events: ProxyPaneInfo[] = []
+      server.on('teammate-detected', (info: ProxyPaneInfo) => events.push(info))
+
+      await server.discoverPanes()
+
+      expect(events).toHaveLength(0)
+      expect(mockExec).not.toHaveBeenCalled()
+    })
   })
 
   describe('sendInput', () => {
     it('falls back to tmux send-keys when pane TTY is unavailable', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       // Use a non-existent TTY path so fs.openSync fails and falls through
       mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
-        if (args[0] === 'list-panes') {
+        if (args.includes('list-panes')) {
           return { stdout: '%1|1234|worker||main\n', stderr: '' }
         }
         return { stdout: '', stderr: '' }
@@ -503,10 +523,10 @@ describe('TmuxProxyServer', () => {
     })
 
     it('escapes double quotes in input', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
-        if (args[0] === 'list-panes') {
+        if (args.includes('list-panes')) {
           return { stdout: '%1|1234|worker||main\n', stderr: '' }
         }
         return { stdout: '', stderr: '' }
@@ -588,7 +608,7 @@ describe('TmuxProxyServer', () => {
 
   describe('stop cleanup', () => {
     it('clears known panes on stop', async () => {
-      createServer()
+      createServer({ leadSessionName: 'main' })
 
       mockExec.mockResolvedValue({
         stdout: '%1|1234|worker|/dev/ttys001|main\n',
