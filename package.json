@@ -2,7 +2,6 @@
   "name": "cc-frontend",
   "version": "0.1.0",
   "description": "IDE-like interface for managing Claude Code agent teams",
-  "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

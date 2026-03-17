@@ -8,6 +8,8 @@ export function useAgentManager() {
   const agentIdsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
+    if (!window.api?.onAgentOutput) return
+
     const unsubOutput = window.api.onAgentOutput(() => {
       // Output is handled directly by useTerminal hook per-pane
     })

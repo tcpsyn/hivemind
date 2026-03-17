@@ -10,6 +10,10 @@ export function useFileTree() {
   const mountedRef = useRef(true)
 
   const loadTree = useCallback(async () => {
+    if (!window.api?.fileTreeRequest) {
+      setLoading(false)
+      return
+    }
     try {
       const result = await window.api.fileTreeRequest({ rootPath: project.path || '.' })
       if (mountedRef.current) {
