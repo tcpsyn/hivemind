@@ -60,7 +60,7 @@ Once enabled, Claude Code will use tmux to spawn teammate agents when you ask it
 ### Install & Run
 
 ```bash
-git clone https://github.com/lukemacneil/hivemind.git
+git clone https://github.com/tcpsyn/hivemind.git
 cd hivemind
 pnpm install
 pnpm dev
