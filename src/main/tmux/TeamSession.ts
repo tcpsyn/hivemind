@@ -1,5 +1,6 @@
 import { join } from 'path'
 import { tmpdir } from 'os'
+import { readdirSync, unlinkSync } from 'fs'
 import { EventEmitter } from 'events'
 import { PtyManager } from '../pty/PtyManager'
 import { FakeTmuxServer } from './FakeTmuxServer'
@@ -14,6 +15,7 @@ export class TeamSession extends EventEmitter {
   private leadAgent: AgentState | null = null
   private teammates = new Map<string, AgentState>()
   private running = false
+  private signalHandlers: { event: string; handler: () => void }[] = []
 
   constructor(sessionName: string, projectPath: string, ptyManager?: PtyManager) {
     super()
@@ -23,7 +25,25 @@ export class TeamSession extends EventEmitter {
     this.ptyManager = ptyManager ?? new PtyManager()
   }
 
-  async start(): Promise<AgentState> {
+  static cleanupStaleSockets(): void {
+    try {
+      const tmp = tmpdir()
+      const files = readdirSync(tmp)
+      for (const file of files) {
+        if (file.startsWith('cc-frontend-') && file.endsWith('.sock')) {
+          try {
+            unlinkSync(join(tmp, file))
+          } catch {
+            // ignore — file may be in use
+          }
+        }
+      }
+    } catch {
+      // ignore — tmpdir read failure is non-fatal
+    }
+  }
+
+  async start(leadCommand?: string): Promise<AgentState> {
     this.server = new FakeTmuxServer(this.socketPath)
     await this.server.start()
 
@@ -33,7 +53,7 @@ export class TeamSession extends EventEmitter {
       {
         name: 'team-lead',
         role: 'lead',
-        command: 'claude --dangerously-skip-permissions'
+        command: leadCommand || 'claude'
       },
       this.projectPath
     )
@@ -46,11 +66,14 @@ export class TeamSession extends EventEmitter {
     }
 
     this.running = true
+    this.installSignalHandlers()
     return leadAgent
   }
 
   async stop(): Promise<void> {
     if (!this.running && !this.server) return
+
+    this.removeSignalHandlers()
 
     // Destroy all teammate PTYs
     for (const [agentId] of this.teammates) {
@@ -154,6 +177,36 @@ export class TeamSession extends EventEmitter {
         this.emit('teammate-exited', agentId, agent.paneId, agent.sessionName, exitCode)
       }
     })
+  }
+
+  private installSignalHandlers(): void {
+    for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+      const handler = () => {
+        this.stop().catch(() => {})
+      }
+      this.signalHandlers.push({ event: signal, handler })
+      process.on(signal, handler)
+    }
+
+    const exitHandler = () => {
+      // Synchronous cleanup — best effort socket removal
+      if (this.server) {
+        try {
+          unlinkSync(this.socketPath)
+        } catch {
+          // ignore
+        }
+      }
+    }
+    this.signalHandlers.push({ event: 'exit', handler: exitHandler })
+    process.on('exit', exitHandler)
+  }
+
+  private removeSignalHandlers(): void {
+    for (const { event, handler } of this.signalHandlers) {
+      process.removeListener(event, handler)
+    }
+    this.signalHandlers = []
   }
 
   private async handleSendKeys(paneId: string, sessionName: string, command: string, hasEnter: boolean): Promise<void> {

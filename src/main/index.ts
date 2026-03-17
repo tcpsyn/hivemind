@@ -17,6 +17,7 @@ import {
   sendTeammateSpawned,
   sendTeammateExited
 } from './ipc/handlers'
+import { TeamSession } from './tmux/TeamSession'
 import type { IpcServices } from './ipc/handlers'
 import type { AgentState } from '../shared/types'
 
@@ -198,6 +199,7 @@ function updateWindowTitle(projectName?: string): void {
 }
 
 function initializeServices(): void {
+  TeamSession.cleanupStaleSockets()
   ptyManager = new PtyManager()
   const fileService = new FileService()
   const gitService = new GitService(process.cwd())
