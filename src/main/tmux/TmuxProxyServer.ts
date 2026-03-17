@@ -1,5 +1,7 @@
 import * as net from 'net'
 import * as fs from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { EventEmitter } from 'events'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
@@ -17,7 +19,7 @@ export interface ProxyPaneInfo {
 export interface TmuxProxyNotification {
   event: string
   command: string
-  args: string
+  args: string[] | string
   exitCode: number
 }
 
@@ -37,18 +39,25 @@ const PANE_MUTATING_COMMANDS = [
   'kill-window'
 ]
 
+interface PaneStreamState {
+  interval: ReturnType<typeof setInterval>
+  outFile: string
+  bytesRead: number
+}
+
 export class TmuxProxyServer extends EventEmitter {
   private server: net.Server | null = null
   private socketPath: string
   private realTmuxPath: string
   private tmuxSocketName: string | null
   private knownPanes = new Map<string, ProxyPaneInfo>()
-  private paneCaptureIntervals = new Map<string, ReturnType<typeof setInterval>>()
+  private paneStreams = new Map<string, PaneStreamState>()
   private pollInterval: ReturnType<typeof setInterval> | null = null
   private leadPaneId: string
   private leadSessionName: string | null = null
   private execCommand: ExecCommand
   private pollIntervalMs: number
+  private pendingNameLookups = new Map<string, ReturnType<typeof setTimeout>>()
 
   constructor(
     socketPath: string,
@@ -101,10 +110,20 @@ export class TmuxProxyServer extends EventEmitter {
       this.pollInterval = null
     }
 
-    for (const [, interval] of this.paneCaptureIntervals) {
-      clearInterval(interval)
+    for (const [, state] of this.paneStreams) {
+      clearInterval(state.interval)
+      try {
+        fs.unlinkSync(state.outFile)
+      } catch {
+        // ignore
+      }
     }
-    this.paneCaptureIntervals.clear()
+    this.paneStreams.clear()
+
+    for (const [, timeout] of this.pendingNameLookups) {
+      clearTimeout(timeout)
+    }
+    this.pendingNameLookups.clear()
     this.knownPanes.clear()
 
     return new Promise((resolve) => {
@@ -147,18 +166,47 @@ export class TmuxProxyServer extends EventEmitter {
     if (notification.event !== 'tmux-command') return
     if (notification.exitCode !== 0) return
 
+    const args = Array.isArray(notification.args) ? notification.args : []
+
     // Capture session name from new-session commands
-    if (notification.command === 'new-session' && Array.isArray(notification.args)) {
-      const sIdx = notification.args.indexOf('-s')
-      if (sIdx !== -1 && sIdx + 1 < notification.args.length) {
-        this.leadSessionName = notification.args[sIdx + 1]
+    if (notification.command === 'new-session') {
+      const sIdx = args.indexOf('-s')
+      if (sIdx !== -1 && sIdx + 1 < args.length) {
+        this.leadSessionName = args[sIdx + 1]
       }
+    }
+
+    // Extract agent name from send-keys commands and update pane info
+    if (notification.command === 'send-keys') {
+      this.handleSendKeysNotification(args)
     }
 
     if (PANE_MUTATING_COMMANDS.includes(notification.command)) {
       this.discoverPanes().catch((err) => {
         this.emit('error', err)
       })
+    }
+  }
+
+  private handleSendKeysNotification(args: string[]): void {
+    // Parse: send-keys -t <target> <command-string> Enter
+    const tIdx = args.indexOf('-t')
+    if (tIdx === -1 || tIdx + 1 >= args.length) return
+
+    const fullArgs = args.join(' ')
+    const nameMatch = fullArgs.match(/--agent-name\s+(\S+)/)
+    if (!nameMatch) return
+
+    const agentName = nameMatch[1]
+    const target = args[tIdx + 1]
+
+    // Update any known pane that matches the target
+    for (const [paneId, paneInfo] of this.knownPanes) {
+      if (target === paneId || target.includes(paneInfo.sessionName)) {
+        paneInfo.windowName = agentName
+        this.emit('teammate-renamed', { paneId, name: agentName })
+        break
+      }
     }
   }
 
@@ -199,20 +247,20 @@ export class TmuxProxyServer extends EventEmitter {
       currentPaneIds.add(paneId)
 
       if (!this.knownPanes.has(paneId)) {
-        // Try to get a better name from the process command line
-        const agentName = await this.getAgentName(parseInt(pidStr, 10), windowName)
-
         const paneInfo: ProxyPaneInfo = {
           paneId,
           pid: parseInt(pidStr, 10),
-          windowName: agentName,
+          windowName,
           tty,
           sessionName
         }
         this.knownPanes.set(paneId, paneInfo)
         this.emit('teammate-detected', paneInfo)
 
-        this.startPaneStreaming(paneId, tty).catch(() => {})
+        this.startPaneStreaming(paneId).catch(() => {})
+
+        // Schedule delayed name lookup (agent process needs time to start)
+        this.scheduleNameLookup(paneId, parseInt(pidStr, 10))
       }
     }
 
@@ -226,26 +274,93 @@ export class TmuxProxyServer extends EventEmitter {
     }
   }
 
-  async startPaneStreaming(paneId: string, _ttyPath: string): Promise<void> {
-    // Resize the tmux pane to a reasonable width for the companion panel
-    // (prevents hard line wraps at column 200)
-    try {
-      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
-        'resize-pane', '-t', paneId, '-x', '80', '-y', '24'
-      ]))
-    } catch {
-      // resize may fail for various reasons
+  private scheduleNameLookup(paneId: string, pid: number): void {
+    // Try to resolve the agent name after the process has time to start
+    const attempts = [2000, 5000, 10000]
+    let attemptIdx = 0
+
+    const tryLookup = async () => {
+      const pane = this.knownPanes.get(paneId)
+      if (!pane) return
+
+      try {
+        const { stdout: childOut } = await this.execCommand('pgrep', [
+          '-P', String(pid), '-a'
+        ]).catch(() => ({ stdout: '' }))
+
+        const nameMatch = childOut.match(/--agent-name\s+(\S+)/)
+        if (nameMatch && nameMatch[1] !== pane.windowName) {
+          pane.windowName = nameMatch[1]
+          this.emit('teammate-renamed', { paneId, name: nameMatch[1] })
+          return
+        }
+      } catch {
+        // ignore
+      }
+
+      attemptIdx++
+      if (attemptIdx < attempts.length) {
+        const timeout = setTimeout(tryLookup, attempts[attemptIdx])
+        this.pendingNameLookups.set(paneId, timeout)
+      }
     }
 
-    // Use capture-pane polling instead of TTY streaming.
-    const captureIntervalMs = 500
+    const timeout = setTimeout(tryLookup, attempts[0])
+    this.pendingNameLookups.set(paneId, timeout)
+  }
+
+  async startPaneStreaming(paneId: string): Promise<void> {
+    const safeId = paneId.replace('%', '')
+    const outFile = join(tmpdir(), `cc-pane-${safeId}-${Date.now()}.out`)
+
+    // Create the output file
+    fs.writeFileSync(outFile, '')
+
+    // Use tmux pipe-pane to stream output to the file
+    try {
+      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
+        'pipe-pane', '-t', paneId, '-o', `cat >> "${outFile}"`
+      ]))
+    } catch {
+      // pipe-pane may fail, fall back to capture-pane polling
+      this.startCapturePanePolling(paneId)
+      return
+    }
+
+    // Poll the file for new content
+    const state: PaneStreamState = {
+      interval: setInterval(() => this.readNewOutput(paneId, state), 200),
+      outFile,
+      bytesRead: 0
+    }
+    this.paneStreams.set(paneId, state)
+  }
+
+  private readNewOutput(paneId: string, state: PaneStreamState): void {
+    try {
+      const stats = fs.statSync(state.outFile)
+      if (stats.size > state.bytesRead) {
+        const buf = Buffer.alloc(stats.size - state.bytesRead)
+        const fd = fs.openSync(state.outFile, 'r')
+        fs.readSync(fd, buf, 0, buf.length, state.bytesRead)
+        fs.closeSync(fd)
+        state.bytesRead = stats.size
+        this.emit('teammate-output', { paneId, data: buf })
+      }
+    } catch {
+      // File might not exist yet
+    }
+  }
+
+  private startCapturePanePolling(paneId: string): void {
     const lastCapture = { content: '' }
+    const outFile = ''
 
     const interval = setInterval(async () => {
       try {
         const { stdout } = await this.execCommand(
           this.realTmuxPath,
-          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-S', '-', '-J'])
+          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-e', '-S', '-'])
         )
         if (stdout !== lastCapture.content) {
           this.emit('teammate-output', { paneId, data: Buffer.from(stdout) })
@@ -254,36 +369,28 @@ export class TmuxProxyServer extends EventEmitter {
       } catch {
         // Pane may have been destroyed
       }
-    }, captureIntervalMs)
+    }, 500)
 
-    this.paneCaptureIntervals.set(paneId, interval)
-  }
-
-  private async getAgentName(pid: number, fallback: string): Promise<string> {
-    try {
-      // Look at child processes for the claude agent command
-      const { stdout } = await this.execCommand('ps', [
-        '-o', 'args=', '-p', String(pid)
-      ])
-      // Also check children in case the shell spawned claude
-      const { stdout: childOut } = await this.execCommand('pgrep', [
-        '-P', String(pid), '-a'
-      ]).catch(() => ({ stdout: '' }))
-
-      const combined = stdout + '\n' + childOut
-      const nameMatch = combined.match(/--agent-name\s+(\S+)/)
-      if (nameMatch) return nameMatch[1]
-    } catch {
-      // Fall through to fallback
-    }
-    return fallback
+    this.paneStreams.set(paneId, { interval, outFile, bytesRead: 0 })
   }
 
   private stopPaneStreaming(paneId: string): void {
-    const interval = this.paneCaptureIntervals.get(paneId)
-    if (interval) {
-      clearInterval(interval)
-      this.paneCaptureIntervals.delete(paneId)
+    const state = this.paneStreams.get(paneId)
+    if (state) {
+      clearInterval(state.interval)
+      if (state.outFile) {
+        try {
+          fs.unlinkSync(state.outFile)
+        } catch {
+          // ignore
+        }
+      }
+      this.paneStreams.delete(paneId)
+    }
+    const timeout = this.pendingNameLookups.get(paneId)
+    if (timeout) {
+      clearTimeout(timeout)
+      this.pendingNameLookups.delete(paneId)
     }
   }
 

@@ -42,11 +42,9 @@ export function useTeammateTerminal(
     fitRef.current = fitAddon
 
     // Subscribe to teammate output (filtered by paneId)
-    // Output is full pane snapshots from capture-pane polling,
-    // so we reset and rewrite on each update
+    // Output is streamed incrementally via pipe-pane
     const unsubscribe = window.api.onTeammateOutput((payload) => {
       if (payload.paneId === paneId) {
-        term.reset()
         term.write(payload.data)
       }
     })

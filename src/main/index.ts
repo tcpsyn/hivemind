@@ -16,7 +16,8 @@ import {
   sendAgentInputNeeded,
   sendTeammateSpawned,
   sendTeammateExited,
-  sendTeammateOutput
+  sendTeammateOutput,
+  sendTeammateRenamed
 } from './ipc/handlers'
 import { TeamSession } from './tmux/TeamSession'
 import type { IpcServices } from './ipc/handlers'
@@ -223,6 +224,12 @@ function wireTeamSessionEvents(session: TeamSession): void {
       }
     }
   )
+
+  session.on('teammate-renamed', (agentId: string, name: string, paneId: string) => {
+    if (mainWindow) {
+      sendTeammateRenamed(mainWindow, { agentId, name, paneId })
+    }
+  })
 }
 
 function initializeServices(): void {

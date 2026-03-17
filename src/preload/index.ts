@@ -89,6 +89,7 @@ const api: ElectronApi = {
   onGitStatusUpdate: createOnHandler(MainToRenderer.GIT_STATUS_UPDATE),
   onTeammateSpawned: createOnHandler(MainToRenderer.TEAM_TEAMMATE_SPAWNED),
   onTeammateExited: createOnHandler(MainToRenderer.TEAM_TEAMMATE_EXITED),
+  onTeammateRenamed: createOnHandler(MainToRenderer.TEAM_TEAMMATE_RENAMED),
   onTeammateOutput: createOnHandler(MainToRenderer.TEAMMATE_OUTPUT),
   sendTeammateInput: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_INPUT, req),
 

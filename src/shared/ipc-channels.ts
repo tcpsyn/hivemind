@@ -18,6 +18,7 @@ export const MainToRenderer = {
   GIT_STATUS_UPDATE: 'git:status-update',
   TEAM_TEAMMATE_SPAWNED: 'team:teammate-spawned',
   TEAM_TEAMMATE_EXITED: 'team:teammate-exited',
+  TEAM_TEAMMATE_RENAMED: 'team:teammate-renamed',
   TEAMMATE_OUTPUT: 'teammate:output'
 } as const
 
@@ -161,4 +162,10 @@ export interface TeammateExitedPayload {
   paneId: string
   sessionName: string
   exitCode: number
+}
+
+export interface TeammateRenamedPayload {
+  agentId: string
+  name: string
+  paneId: string
 }

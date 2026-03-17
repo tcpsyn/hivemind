@@ -25,7 +25,8 @@ import type {
   GitStatusUpdatePayload,
   TeammateSpawnedPayload,
   TeammateExitedPayload,
-  TeammateOutputPayload
+  TeammateOutputPayload,
+  TeammateRenamedPayload
 } from '../../shared/ipc-channels'
 import type { FileTreeNode, GitStatus } from '../../shared/types'
 import type { TeamSession } from '../tmux/TeamSession'
@@ -138,4 +139,8 @@ export function sendTeammateExited(window: BrowserWindow, payload: TeammateExite
 
 export function sendTeammateOutput(window: BrowserWindow, payload: TeammateOutputPayload): void {
   sendToRenderer(window, MainToRenderer.TEAMMATE_OUTPUT, payload)
+}
+
+export function sendTeammateRenamed(window: BrowserWindow, payload: TeammateRenamedPayload): void {
+  sendToRenderer(window, MainToRenderer.TEAM_TEAMMATE_RENAMED, payload)
 }

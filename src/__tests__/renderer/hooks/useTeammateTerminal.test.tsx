@@ -93,7 +93,6 @@ describe('useTeammateTerminal', () => {
     act(() => {
       outputCallback?.({ paneId: '%1', data: 'hello from tmux' })
     })
-    expect(mockTerminal.reset).toHaveBeenCalled()
     expect(mockTerminal.write).toHaveBeenCalledWith('hello from tmux')
   })
 

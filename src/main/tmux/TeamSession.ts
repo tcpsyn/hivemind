@@ -221,6 +221,17 @@ export class TeamSession extends EventEmitter {
       this.emit('teammate-output', paneId, data.toString())
     })
 
+    this.proxyServer.on('teammate-renamed', ({ paneId, name }: { paneId: string; name: string }) => {
+      const agentId = this.paneIdToAgentId.get(paneId)
+      if (agentId) {
+        const agent = this.teammates.get(agentId)
+        if (agent) {
+          agent.name = name
+          this.emit('teammate-renamed', agentId, name, paneId)
+        }
+      }
+    })
+
     this.proxyServer.on('teammate-exited', ({ paneId }: { paneId: string }) => {
       const agentId = this.paneIdToAgentId.get(paneId)
       if (agentId) {

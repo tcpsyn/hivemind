@@ -92,9 +92,17 @@ export function useAgentManager() {
       agentIdsRef.current.delete(payload.agentId)
     })
 
+    const unsubRenamed = window.api?.onTeammateRenamed?.((payload) => {
+      dispatch({
+        type: 'UPDATE_AGENT',
+        payload: { id: payload.agentId, name: payload.name }
+      })
+    })
+
     return () => {
       unsubSpawned?.()
       unsubExited?.()
+      unsubRenamed?.()
     }
   }, [dispatch, state.layout.selectedTeammateId])
 
