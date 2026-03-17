@@ -1,21 +1,26 @@
 import { join } from 'path'
 import { tmpdir } from 'os'
-import { readdirSync, unlinkSync } from 'fs'
+import { existsSync, readdirSync, unlinkSync } from 'fs'
 import { EventEmitter } from 'events'
 import { PtyManager } from '../pty/PtyManager'
-import { FakeTmuxServer } from './FakeTmuxServer'
+import { TmuxProxyServer, type ProxyPaneInfo } from './TmuxProxyServer'
 import type { AgentState } from '../../shared/types'
+
+const REAL_TMUX_PATHS = ['/opt/homebrew/bin/tmux', '/usr/local/bin/tmux', '/usr/bin/tmux']
 
 export class TeamSession extends EventEmitter {
   private sessionName: string
   private projectPath: string
   private socketPath: string
-  private server: FakeTmuxServer | null = null
+  private proxyServer: TmuxProxyServer | null = null
   private ptyManager: PtyManager
   private leadAgent: AgentState | null = null
   private teammates = new Map<string, AgentState>()
+  private paneIdToAgentId = new Map<string, string>()
   private running = false
   private signalHandlers: { event: string; handler: () => void }[] = []
+  private realTmuxPath: string
+  private idCounter = 0
 
   constructor(sessionName: string, projectPath: string, ptyManager?: PtyManager) {
     super()
@@ -23,6 +28,14 @@ export class TeamSession extends EventEmitter {
     this.projectPath = projectPath
     this.socketPath = join(tmpdir(), `cc-frontend-${sessionName}-${Date.now()}.sock`)
     this.ptyManager = ptyManager ?? new PtyManager()
+    this.realTmuxPath = TeamSession.findRealTmux()
+  }
+
+  static findRealTmux(): string {
+    for (const p of REAL_TMUX_PATHS) {
+      if (existsSync(p)) return p
+    }
+    throw new Error('Cannot find real tmux binary')
   }
 
   static cleanupStaleSockets(): void {
@@ -44,8 +57,10 @@ export class TeamSession extends EventEmitter {
   }
 
   async start(leadCommand?: string): Promise<AgentState> {
-    this.server = new FakeTmuxServer(this.socketPath)
-    await this.server.start()
+    this.proxyServer = new TmuxProxyServer(this.socketPath, this.realTmuxPath, {
+      pollIntervalMs: 2000
+    })
+    await this.proxyServer.start()
 
     this.wireServerEvents()
 
@@ -61,28 +76,18 @@ export class TeamSession extends EventEmitter {
     )
 
     this.leadAgent = leadAgent
-
-    // Register lead as pane %0 in PtyManager and in the FakeTmuxServer
-    if (leadAgent.id) {
-      this.ptyManager.registerPane('%0', leadAgent.id)
-      this.server.registerDefaultSession(this.sessionName, '%0', leadAgent.pid ?? process.pid)
-    }
-
     this.running = true
     this.installSignalHandlers()
     return leadAgent
   }
 
   async stop(): Promise<void> {
-    if (!this.running && !this.server) return
+    if (!this.running && !this.proxyServer) return
 
     this.removeSignalHandlers()
 
-    // Destroy all teammate PTYs
-    for (const [agentId] of this.teammates) {
-      this.ptyManager.destroyPty(agentId)
-    }
     this.teammates.clear()
+    this.paneIdToAgentId.clear()
 
     // Destroy lead PTY
     if (this.leadAgent) {
@@ -90,10 +95,10 @@ export class TeamSession extends EventEmitter {
       this.leadAgent = null
     }
 
-    // Close server (cleans up socket file)
-    if (this.server) {
-      await this.server.stop()
-      this.server = null
+    // Close proxy server (cleans up socket file)
+    if (this.proxyServer) {
+      await this.proxyServer.stop()
+      this.proxyServer = null
     }
 
     this.running = false
@@ -115,79 +120,68 @@ export class TeamSession extends EventEmitter {
     return this.socketPath
   }
 
-  getServer(): FakeTmuxServer | null {
-    return this.server
+  getServer(): TmuxProxyServer | null {
+    return this.proxyServer
   }
 
   getLeadEnv(): Record<string, string> {
-    // Prepend our bin/ directory to PATH so Claude finds our fake tmux binary first
-    const fakeBinDir = join(process.cwd(), 'bin')
+    const binDir = join(process.cwd(), 'bin')
     const currentPath = process.env.PATH || ''
     return {
-      PATH: `${fakeBinDir}:${currentPath}`,
-      TMUX: `${this.socketPath},${process.pid},0`,
-      TMUX_PANE: '%0',
-      TMUX_PROGRAM: join(fakeBinDir, 'tmux'),
-      TERM_PROGRAM: 'tmux',
-      TERM: 'tmux-256color',
-      CC_FRONTEND_SOCKET: this.socketPath
+      PATH: `${binDir}:${currentPath}`,
+      CC_FRONTEND_SOCKET: this.socketPath,
+      REAL_TMUX: this.realTmuxPath
     }
   }
 
+  async sendTeammateInput(paneId: string, data: string): Promise<void> {
+    if (!this.proxyServer) {
+      throw new Error('TeamSession not running')
+    }
+    await this.proxyServer.sendInput(paneId, data)
+  }
+
   private wireServerEvents(): void {
-    if (!this.server) return
+    if (!this.proxyServer) return
 
-    this.server.on(
-      'send-keys',
-      (paneId: string, sessionName: string, command: string, hasEnter: boolean) => {
-        this.handleSendKeys(paneId, sessionName, command, hasEnter)
+    this.proxyServer.on('teammate-detected', (paneInfo: ProxyPaneInfo) => {
+      const agentId = `tmux-${paneInfo.paneId}`
+      const agent: AgentState = {
+        id: agentId,
+        name: paneInfo.windowName || 'teammate',
+        role: 'teammate',
+        avatar: '',
+        color: '',
+        status: 'running',
+        needsInput: false,
+        lastActivity: Date.now(),
+        pid: paneInfo.pid,
+        paneId: paneInfo.paneId,
+        sessionName: paneInfo.sessionName,
+        isTeammate: true
       }
-    )
 
-    this.server.on('session-killed', (name: string, paneIds: string[]) => {
-      for (const paneId of paneIds) {
-        const agent = this.ptyManager.getAgentByPaneId(paneId)
-        if (agent) {
-          this.ptyManager.destroyPty(agent.id)
-          this.teammates.delete(agent.id)
-        }
-      }
+      this.teammates.set(agentId, agent)
+      this.paneIdToAgentId.set(paneInfo.paneId, agentId)
+      this.emit('teammate-spawned', agentId, agent, paneInfo.paneId, paneInfo.sessionName)
     })
 
-    this.server.on('pane-killed', (paneId: string) => {
-      const agent = this.ptyManager.getAgentByPaneId(paneId)
-      if (agent) {
-        this.ptyManager.destroyPty(agent.id)
-        this.teammates.delete(agent.id)
-      }
+    this.proxyServer.on('teammate-output', ({ paneId, data }: { paneId: string; data: Buffer }) => {
+      this.emit('teammate-output', paneId, data.toString())
     })
 
-    this.server.on('pane-selected', (paneId: string) => {
-      this.emit('focus-pane', paneId)
-    })
-
-    this.server.on('pane-resized', (paneId: string, cols: number, rows: number) => {
-      const agent = this.ptyManager.getAgentByPaneId(paneId)
-      if (agent) {
-        this.ptyManager.resize(agent.id, cols, rows)
-      }
-    })
-
-    // Forward PtyManager agent-spawned events
-    this.ptyManager.on(
-      'agent-spawned',
-      (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
-        this.teammates.set(agentId, agent)
-        this.emit('teammate-spawned', agentId, agent, paneId, sessionName)
-      }
-    )
-
-    this.ptyManager.on('exit', (agentId: string, exitCode: number) => {
-      const agent = this.teammates.get(agentId)
-      if (agent) {
+    this.proxyServer.on('teammate-exited', ({ paneId }: { paneId: string }) => {
+      const agentId = this.paneIdToAgentId.get(paneId)
+      if (agentId) {
+        const agent = this.teammates.get(agentId)
         this.teammates.delete(agentId)
-        this.emit('teammate-exited', agentId, agent.paneId, agent.sessionName, exitCode)
+        this.paneIdToAgentId.delete(paneId)
+        this.emit('teammate-exited', agentId, paneId, agent?.sessionName || '', 0)
       }
+    })
+
+    this.proxyServer.on('error', (err: Error) => {
+      this.emit('error', err)
     })
   }
 
@@ -201,8 +195,7 @@ export class TeamSession extends EventEmitter {
     }
 
     const exitHandler = () => {
-      // Synchronous cleanup — best effort socket removal
-      if (this.server) {
+      if (this.proxyServer) {
         try {
           unlinkSync(this.socketPath)
         } catch {
@@ -219,33 +212,5 @@ export class TeamSession extends EventEmitter {
       process.removeListener(event, handler)
     }
     this.signalHandlers = []
-  }
-
-  private async handleSendKeys(
-    paneId: string,
-    sessionName: string,
-    command: string,
-    hasEnter: boolean
-  ): Promise<void> {
-    // Check if this pane already has a PTY
-    const existingAgent = this.ptyManager.getAgentByPaneId(paneId)
-
-    if (existingAgent) {
-      // Send input to existing PTY
-      const input = hasEnter ? command + '\r' : command
-      this.ptyManager.sendInput(existingAgent.id, input)
-    } else {
-      // Spawn new teammate PTY
-      const env = {
-        ...this.getLeadEnv(),
-        TMUX_PANE: paneId
-      }
-
-      try {
-        await this.ptyManager.createTeammatePty(command, this.projectPath, env, sessionName, paneId)
-      } catch (err) {
-        console.error(`Failed to spawn teammate for pane ${paneId}:`, err)
-      }
-    }
   }
 }

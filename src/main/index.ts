@@ -15,7 +15,8 @@ import {
   sendAgentStatusChange,
   sendAgentInputNeeded,
   sendTeammateSpawned,
-  sendTeammateExited
+  sendTeammateExited,
+  sendTeammateOutput
 } from './ipc/handlers'
 import { TeamSession } from './tmux/TeamSession'
 import type { IpcServices } from './ipc/handlers'
@@ -198,6 +199,32 @@ function updateWindowTitle(projectName?: string): void {
   mainWindow.setTitle(title)
 }
 
+function wireTeamSessionEvents(session: TeamSession): void {
+  session.on(
+    'teammate-spawned',
+    (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
+      if (mainWindow) {
+        sendTeammateSpawned(mainWindow, { agentId, agent, paneId, sessionName })
+      }
+    }
+  )
+
+  session.on('teammate-output', (paneId: string, data: string) => {
+    if (mainWindow) {
+      sendTeammateOutput(mainWindow, { paneId, data })
+    }
+  })
+
+  session.on(
+    'teammate-exited',
+    (agentId: string, paneId: string, sessionName: string, exitCode: number) => {
+      if (mainWindow) {
+        sendTeammateExited(mainWindow, { agentId, paneId, sessionName, exitCode })
+      }
+    }
+  )
+}
+
 function initializeServices(): void {
   TeamSession.cleanupStaleSockets()
   ptyManager = new PtyManager()
@@ -242,37 +269,14 @@ function initializeServices(): void {
     }
   })
 
-  ptyManager.on(
-    'agent-spawned',
-    (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
-      if (mainWindow) {
-        sendTeammateSpawned(mainWindow, { agentId, agent, paneId, sessionName })
-      }
-    }
-  )
-
-  ptyManager.on('exit', (agentId: string, exitCode: number) => {
-    if (mainWindow && ptyManager) {
-      const agents = ptyManager.getAll()
-      const agent = agents.get(agentId)
-      if (agent?.isTeammate && agent.paneId && agent.sessionName) {
-        sendTeammateExited(mainWindow, {
-          agentId,
-          paneId: agent.paneId,
-          sessionName: agent.sessionName,
-          exitCode
-        })
-      }
-    }
-  })
-
   notificationService = new NotificationService(ptyManager)
 
   ipcServices = createIpcServices({
     ptyManager,
     fileService,
     gitService,
-    teamConfigService
+    teamConfigService,
+    onSessionCreated: (session) => wireTeamSessionEvents(session)
   })
   registerIpcHandlers(ipcServices)
 }

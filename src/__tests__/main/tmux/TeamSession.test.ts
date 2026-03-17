@@ -8,7 +8,6 @@ vi.mock('node-pty', () => {
     cols: 80,
     rows: 24,
     onData: vi.fn((cb: (data: string) => void) => {
-      // Store the callback so tests can trigger it
       mockPty._dataCallback = cb
       return { dispose: vi.fn() }
     }),
@@ -45,7 +44,7 @@ describe('TeamSession', () => {
   })
 
   describe('start', () => {
-    it('creates a socket file and starts the server', async () => {
+    it('creates a socket file and starts the proxy server', async () => {
       const leadAgent = await session.start()
       expect(leadAgent).toBeDefined()
       expect(leadAgent.id).toBeDefined()
@@ -63,14 +62,17 @@ describe('TeamSession', () => {
       await session.start()
       const env = session.getLeadEnv()
 
-      expect(env.TMUX_PROGRAM).toBeDefined()
-      expect(env.TMUX_PROGRAM).toMatch(/bin\/tmux$/)
+      // Proxy approach: PATH with bin/, CC_FRONTEND_SOCKET, REAL_TMUX
+      expect(env.PATH).toContain('bin')
       expect(env.CC_FRONTEND_SOCKET).toBeDefined()
-      expect(env.TMUX).toBeDefined()
-      expect(env.TMUX).toContain(env.CC_FRONTEND_SOCKET)
-      expect(env.TMUX_PANE).toBe('%0')
-      expect(env.TERM_PROGRAM).toBe('tmux')
-      expect(env.TERM).toBe('tmux-256color')
+      expect(env.CC_FRONTEND_SOCKET).toContain('cc-frontend-test-team')
+      expect(env.REAL_TMUX).toBeDefined()
+      expect(env.REAL_TMUX).toContain('tmux')
+
+      // Should NOT set fake TMUX env vars
+      expect(env.TMUX).toBeUndefined()
+      expect(env.TMUX_PANE).toBeUndefined()
+      expect(env.TMUX_PROGRAM).toBeUndefined()
     })
 
     it('creates socket file at expected path', async () => {
@@ -118,8 +120,8 @@ describe('TeamSession', () => {
     })
   })
 
-  describe('server events', () => {
-    it('emits teammate-spawned when send-keys triggers spawn', async () => {
+  describe('proxy server events', () => {
+    it('emits teammate-spawned when proxy detects a new pane', async () => {
       await session.start()
       const server = session.getServer()
       expect(server).toBeDefined()
@@ -127,12 +129,98 @@ describe('TeamSession', () => {
       const spawnedSpy = vi.fn()
       session.on('teammate-spawned', spawnedSpy)
 
-      // Simulate the FakeTmuxServer emitting send-keys
-      // (In real usage, fake-tmux.js sends this via socket)
-      server!.emit('send-keys', '%1', 'test-team', 'claude --agent-id researcher@team', true)
+      // Simulate TmuxProxyServer detecting a new teammate pane
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 99999,
+        windowName: 'researcher',
+        tty: '/dev/ttys001',
+        sessionName: 'test-team'
+      })
 
-      // The session should handle this event
-      // Actual PTY spawning is handled by PtyManager which is mocked
+      expect(spawnedSpy).toHaveBeenCalledTimes(1)
+      const [agentId, agent, paneId, sessionName] = spawnedSpy.mock.calls[0]
+      expect(agentId).toBe('tmux-%1')
+      expect(agent.name).toBe('researcher')
+      expect(agent.isTeammate).toBe(true)
+      expect(paneId).toBe('%1')
+      expect(sessionName).toBe('test-team')
+    })
+
+    it('emits teammate-output when proxy receives pane output', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const outputSpy = vi.fn()
+      session.on('teammate-output', outputSpy)
+
+      server!.emit('teammate-output', { paneId: '%1', data: Buffer.from('hello world') })
+
+      expect(outputSpy).toHaveBeenCalledWith('%1', 'hello world')
+    })
+
+    it('emits teammate-exited when proxy detects pane removal', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      // First detect a pane
+      server!.emit('teammate-detected', {
+        paneId: '%2',
+        pid: 88888,
+        windowName: 'coder',
+        tty: '/dev/ttys002',
+        sessionName: 'test-team'
+      })
+
+      const exitedSpy = vi.fn()
+      session.on('teammate-exited', exitedSpy)
+
+      // Then simulate it exiting
+      server!.emit('teammate-exited', { paneId: '%2' })
+
+      expect(exitedSpy).toHaveBeenCalledTimes(1)
+      const [agentId, paneId, sessionName, exitCode] = exitedSpy.mock.calls[0]
+      expect(agentId).toBe('tmux-%2')
+      expect(paneId).toBe('%2')
+      expect(sessionName).toBe('test-team')
+      expect(exitCode).toBe(0)
+    })
+
+    it('tracks teammates in getTeammates()', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'researcher',
+        tty: '',
+        sessionName: 'test-team'
+      })
+      server!.emit('teammate-detected', {
+        paneId: '%2',
+        pid: 22222,
+        windowName: 'coder',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      const teammates = session.getTeammates()
+      expect(teammates).toHaveLength(2)
+      expect(teammates.map((t) => t.name).sort()).toEqual(['coder', 'researcher'])
+    })
+  })
+
+  describe('sendTeammateInput', () => {
+    it('throws when session is not running', async () => {
+      await expect(session.sendTeammateInput('%1', 'test')).rejects.toThrow('not running')
+    })
+  })
+
+  describe('findRealTmux', () => {
+    it('finds tmux on the system', () => {
+      const path = TeamSession.findRealTmux()
+      expect(path).toContain('tmux')
     })
   })
 })

@@ -129,10 +129,9 @@ describe('tmux proxy wrapper', () => {
     await new Promise<void>((resolve) => server.listen(socketPath, resolve))
 
     try {
-      await spawnProxy(
-        ['send-keys', '-t', '%5', 'claude --agent-id researcher@team', 'Enter'],
-        { CC_FRONTEND_SOCKET: socketPath }
-      )
+      await spawnProxy(['send-keys', '-t', '%5', 'claude --agent-id researcher@team', 'Enter'], {
+        CC_FRONTEND_SOCKET: socketPath
+      })
 
       await new Promise((r) => setTimeout(r, 2000))
 

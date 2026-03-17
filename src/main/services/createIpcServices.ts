@@ -10,6 +10,7 @@ export interface ServiceDeps {
   fileService: FileService
   gitService: GitService
   teamConfigService: TeamConfigService
+  onSessionCreated?: (session: TeamSession) => void
 }
 
 export function createIpcServices(deps: ServiceDeps): IpcServices {
@@ -82,6 +83,7 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
       }
 
       activeSession = new TeamSession(config.name, config.project, ptyManager)
+      deps.onSessionCreated?.(activeSession)
       const leadCommand = config.agents?.[0]?.command || 'claude'
       const leadAgent = await activeSession.start(leadCommand)
 
@@ -93,6 +95,11 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
         await activeSession.stop()
         activeSession = null
       }
+    },
+
+    onTeammateInput: async (req) => {
+      if (!activeSession) throw new Error('No active team session')
+      await activeSession.sendTeammateInput(req.paneId, req.data)
     },
 
     getActiveSession: () => activeSession

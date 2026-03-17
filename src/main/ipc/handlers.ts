@@ -16,6 +16,7 @@ import type {
   GitStatusRequest,
   TeamStartRequest,
   TeamStartResponse,
+  TeammateInputRequest,
   AgentOutputPayload,
   AgentStatusChangePayload,
   AgentInputNeededPayload,
@@ -23,7 +24,8 @@ import type {
   FileTreeUpdatePayload,
   GitStatusUpdatePayload,
   TeammateSpawnedPayload,
-  TeammateExitedPayload
+  TeammateExitedPayload,
+  TeammateOutputPayload
 } from '../../shared/ipc-channels'
 import type { FileTreeNode, GitStatus } from '../../shared/types'
 import type { TeamSession } from '../tmux/TeamSession'
@@ -41,6 +43,7 @@ export interface IpcServices {
   onGitStatus: (req: GitStatusRequest) => Promise<GitStatus>
   onTeamStart: (req: TeamStartRequest) => Promise<TeamStartResponse>
   onTeamStop: () => Promise<void>
+  onTeammateInput: (req: TeammateInputRequest) => Promise<void>
   getActiveSession?: () => TeamSession | null
 }
 
@@ -77,6 +80,9 @@ export function registerIpcHandlers(services: IpcServices): void {
     services.onTeamStart(req)
   )
   ipcMain.handle(RendererToMain.TEAM_STOP, () => services.onTeamStop())
+  ipcMain.handle(RendererToMain.TEAMMATE_INPUT, (_event, req: TeammateInputRequest) =>
+    services.onTeammateInput(req)
+  )
 }
 
 export function removeIpcHandlers(): void {
@@ -128,4 +134,8 @@ export function sendTeammateSpawned(window: BrowserWindow, payload: TeammateSpaw
 
 export function sendTeammateExited(window: BrowserWindow, payload: TeammateExitedPayload): void {
   sendToRenderer(window, MainToRenderer.TEAM_TEAMMATE_EXITED, payload)
+}
+
+export function sendTeammateOutput(window: BrowserWindow, payload: TeammateOutputPayload): void {
+  sendToRenderer(window, MainToRenderer.TEAMMATE_OUTPUT, payload)
 }
