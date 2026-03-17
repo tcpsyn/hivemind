@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { PtyManager } from './pty/PtyManager'
@@ -26,7 +26,8 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#1e1e1e',
+    backgroundColor: '#1a1a2e',
+    title: 'Claude Frontend',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -51,13 +52,132 @@ function createWindow(): void {
   }
 }
 
+function buildAppMenu(): void {
+  const isMac = process.platform === 'darwin'
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const }
+            ]
+          }
+        ]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open Project...',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => {
+            // Will be wired to project picker in future
+          }
+        },
+        { type: 'separator' },
+        isMac ? { role: 'close' } : { role: 'quit' }
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Toggle Sidebar',
+          accelerator: 'CmdOrCtrl+B',
+          click: () => {
+            mainWindow?.webContents.send('menu:toggle-sidebar')
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Agents Tab',
+          accelerator: 'CmdOrCtrl+1',
+          click: () => {
+            mainWindow?.webContents.send('menu:set-tab', 'agents')
+          }
+        },
+        {
+          label: 'Editor Tab',
+          accelerator: 'CmdOrCtrl+2',
+          click: () => {
+            mainWindow?.webContents.send('menu:set-tab', 'editor')
+          }
+        },
+        { type: 'separator' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { role: 'resetZoom' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Team',
+      submenu: [
+        {
+          label: 'Start Team...',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => {
+            mainWindow?.webContents.send('menu:team-start')
+          }
+        },
+        {
+          label: 'Stop Team',
+          accelerator: 'CmdOrCtrl+Shift+Q',
+          click: () => {
+            mainWindow?.webContents.send('menu:team-stop')
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Claude Frontend',
+          click: () => {
+            mainWindow?.webContents.send('menu:about')
+          }
+        }
+      ]
+    }
+  ]
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
+
+function updateWindowTitle(projectName?: string): void {
+  if (!mainWindow) return
+  const title = projectName ? `Claude Frontend \u2014 ${projectName}` : 'Claude Frontend'
+  mainWindow.setTitle(title)
+}
+
 function initializeServices(): void {
   ptyManager = new PtyManager()
   const fileService = new FileService()
   const gitService = new GitService(process.cwd())
-  const teamConfigService = new TeamConfigService(
-    join(app.getPath('userData'), 'team-configs')
-  )
+  const teamConfigService = new TeamConfigService(join(app.getPath('userData'), 'team-configs'))
 
   ptyManager.on('data', (agentId: string, data: string) => {
     if (mainWindow) {
@@ -104,8 +224,10 @@ function initializeServices(): void {
 }
 
 app.whenReady().then(() => {
+  buildAppMenu()
   createWindow()
   initializeServices()
+  updateWindowTitle()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -129,3 +251,5 @@ app.on('before-quit', () => {
     notificationService.dispose()
   }
 })
+
+export { updateWindowTitle }

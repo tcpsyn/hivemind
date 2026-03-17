@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { FileTreeNode, GitFileStatus } from '../../../shared/types'
 
 interface FileTreeItemProps {
@@ -15,7 +16,7 @@ const GIT_STATUS_MAP: Record<string, { label: string; className: string }> = {
   added: { label: 'A', className: 'git-status-added' },
   deleted: { label: 'D', className: 'git-status-deleted' },
   untracked: { label: '?', className: 'git-status-untracked' },
-  renamed: { label: 'R', className: 'git-status-modified' },
+  renamed: { label: 'R', className: 'git-status-modified' }
 }
 
 function getFileIcon(name: string): string {
@@ -54,14 +55,14 @@ function GitStatusBadge({ status }: { status: GitFileStatus }) {
   )
 }
 
-export default function FileTreeItem({
+function FileTreeItem({
   node,
   depth,
   isExpanded,
   isFocused,
   onToggle,
   onClick,
-  onContextMenu,
+  onContextMenu
 }: FileTreeItemProps) {
   const isDir = node.type === 'directory'
   const paddingLeft = depth * 16 + 4
@@ -93,3 +94,5 @@ export default function FileTreeItem({
     </div>
   )
 }
+
+export default memo(FileTreeItem)
