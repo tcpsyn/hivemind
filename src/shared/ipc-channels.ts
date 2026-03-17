@@ -17,7 +17,8 @@ export const MainToRenderer = {
   FILE_TREE_UPDATE: 'file:tree-update',
   GIT_STATUS_UPDATE: 'git:status-update',
   TEAM_TEAMMATE_SPAWNED: 'team:teammate-spawned',
-  TEAM_TEAMMATE_EXITED: 'team:teammate-exited'
+  TEAM_TEAMMATE_EXITED: 'team:teammate-exited',
+  TEAMMATE_OUTPUT: 'teammate:output'
 } as const
 
 // Renderer → Main channels (invoke/handle pattern)
@@ -33,7 +34,8 @@ export const RendererToMain = {
   GIT_DIFF: 'git:diff',
   GIT_STATUS: 'git:status',
   TEAM_START: 'team:start',
-  TEAM_STOP: 'team:stop'
+  TEAM_STOP: 'team:stop',
+  TEAMMATE_INPUT: 'teammate:input'
 } as const
 
 // Payload types for Main → Renderer
@@ -135,6 +137,16 @@ export interface TeamStartRequest {
 
 export interface TeamStartResponse {
   agents: AgentState[]
+}
+
+export interface TeammateOutputPayload {
+  paneId: string
+  data: string
+}
+
+export interface TeammateInputRequest {
+  paneId: string
+  data: string
 }
 
 export interface TeammateSpawnedPayload {

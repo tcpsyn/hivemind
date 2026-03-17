@@ -1,6 +1,7 @@
 import { useMemo, useCallback, useRef, useState } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import { TerminalPane } from './TerminalPane'
+import { TeammateTerminalPane } from './TeammateTerminalPane'
 import { TeammateCard } from './TeammateCard'
 import type { AgentState } from '../../../shared/types'
 import './CompanionPanel.css'
@@ -107,7 +108,11 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
       <div className="companion-divider" onMouseDown={handleDividerMouseDown} />
       <div className="companion-terminal">
         {selectedAgent ? (
-          <TerminalPane agent={selectedAgent} />
+          selectedAgent.paneId ? (
+            <TeammateTerminalPane agent={selectedAgent} />
+          ) : (
+            <TerminalPane agent={selectedAgent} />
+          )
         ) : (
           <div className="companion-terminal-empty">
             <span>Select a teammate to view output</span>

@@ -23,7 +23,8 @@ function makeTeammate(overrides: Partial<AgentState> = {}): AgentState {
 beforeEach(() => {
   Object.defineProperty(window, 'api', {
     value: {
-      agentInput: vi.fn().mockResolvedValue(undefined)
+      agentInput: vi.fn().mockResolvedValue(undefined),
+      sendTeammateInput: vi.fn().mockResolvedValue(undefined)
     },
     writable: true,
     configurable: true
@@ -127,6 +128,38 @@ describe('TeammateCard', () => {
       renderCard(makeTeammate({ needsInput: true }), { onSelect })
       fireEvent.click(screen.getByTestId('btn-deny'))
       expect(onSelect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('tmux proxy (paneId) routing', () => {
+    it('Approve sends input via sendTeammateInput when paneId exists', () => {
+      renderCard(makeTeammate({ needsInput: true, paneId: '%1' }))
+      fireEvent.click(screen.getByTestId('btn-approve'))
+      expect(window.api.sendTeammateInput).toHaveBeenCalledWith({
+        paneId: '%1',
+        data: 'y\n'
+      })
+      expect(window.api.agentInput).not.toHaveBeenCalled()
+    })
+
+    it('Deny sends input via sendTeammateInput when paneId exists', () => {
+      renderCard(makeTeammate({ needsInput: true, paneId: '%1' }))
+      fireEvent.click(screen.getByTestId('btn-deny'))
+      expect(window.api.sendTeammateInput).toHaveBeenCalledWith({
+        paneId: '%1',
+        data: 'n\n'
+      })
+      expect(window.api.agentInput).not.toHaveBeenCalled()
+    })
+
+    it('falls back to agentInput when no paneId', () => {
+      renderCard(makeTeammate({ needsInput: true }))
+      fireEvent.click(screen.getByTestId('btn-approve'))
+      expect(window.api.agentInput).toHaveBeenCalledWith({
+        agentId: 'teammate-1',
+        data: 'y\n'
+      })
+      expect(window.api.sendTeammateInput).not.toHaveBeenCalled()
     })
   })
 })

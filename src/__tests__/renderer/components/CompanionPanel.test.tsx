@@ -14,6 +14,12 @@ vi.mock('../../../renderer/src/components/TerminalPane', () => ({
   )
 }))
 
+vi.mock('../../../renderer/src/components/TeammateTerminalPane', () => ({
+  TeammateTerminalPane: ({ agent }: { agent: AgentState }) => (
+    <div data-testid={`teammate-terminal-pane-${agent.id}`}>{agent.name}</div>
+  )
+}))
+
 function makeTeammate(id: string, overrides: Partial<AgentState> = {}): AgentState {
   return {
     id,
@@ -124,5 +130,27 @@ describe('CompanionPanel', () => {
     fireEvent.click(screen.getByTestId('teammate-card-t2'))
     // After click, t2's terminal should render (state update happens)
     expect(screen.getByTestId('terminal-pane-t2')).toBeInTheDocument()
+  })
+
+  it('renders TeammateTerminalPane for selected teammate with paneId', () => {
+    const teammates = [makeTeammate('t1', { paneId: '%1' })]
+    render(
+      <AppProvider initialState={makeStateWith(teammates, 't1')}>
+        <CompanionPanel teammates={teammates} />
+      </AppProvider>
+    )
+    expect(screen.getByTestId('teammate-terminal-pane-t1')).toBeInTheDocument()
+    expect(screen.queryByTestId('terminal-pane-t1')).not.toBeInTheDocument()
+  })
+
+  it('renders TerminalPane for selected teammate without paneId', () => {
+    const teammates = [makeTeammate('t1')]
+    render(
+      <AppProvider initialState={makeStateWith(teammates, 't1')}>
+        <CompanionPanel teammates={teammates} />
+      </AppProvider>
+    )
+    expect(screen.getByTestId('terminal-pane-t1')).toBeInTheDocument()
+    expect(screen.queryByTestId('teammate-terminal-pane-t1')).not.toBeInTheDocument()
   })
 })

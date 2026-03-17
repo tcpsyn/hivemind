@@ -34,7 +34,8 @@ function createMockServices() {
     onGitDiff: vi.fn().mockResolvedValue({ diff: '', filePath: '' }),
     onGitStatus: vi.fn().mockResolvedValue({ files: [], branch: 'main', ahead: 0, behind: 0 }),
     onTeamStart: vi.fn().mockResolvedValue({ agents: [] }),
-    onTeamStop: vi.fn().mockResolvedValue(undefined)
+    onTeamStop: vi.fn().mockResolvedValue(undefined),
+    onTeammateInput: vi.fn().mockResolvedValue(undefined)
   }
 }
 
@@ -56,10 +57,10 @@ describe('IPC Handlers', () => {
       }
     })
 
-    it('registers exactly 12 handlers', () => {
+    it('registers exactly 13 handlers', () => {
       const services = createMockServices()
       registerIpcHandlers(services)
-      expect(handlers.size).toBe(12)
+      expect(handlers.size).toBe(13)
     })
   })
 

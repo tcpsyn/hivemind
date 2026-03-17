@@ -23,18 +23,26 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
     (e: React.MouseEvent) => {
       e.stopPropagation()
       e.preventDefault()
-      window.api.agentInput({ agentId: agent.id, data: 'y\n' })
+      if (agent.paneId) {
+        window.api.sendTeammateInput({ paneId: agent.paneId, data: 'y\n' })
+      } else {
+        window.api.agentInput({ agentId: agent.id, data: 'y\n' })
+      }
     },
-    [agent.id]
+    [agent.id, agent.paneId]
   )
 
   const handleDeny = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
       e.preventDefault()
-      window.api.agentInput({ agentId: agent.id, data: 'n\n' })
+      if (agent.paneId) {
+        window.api.sendTeammateInput({ paneId: agent.paneId, data: 'n\n' })
+      } else {
+        window.api.agentInput({ agentId: agent.id, data: 'n\n' })
+      }
     },
-    [agent.id]
+    [agent.id, agent.paneId]
   )
 
   const classes = [

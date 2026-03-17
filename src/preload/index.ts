@@ -23,7 +23,9 @@ import type {
   FileTreeUpdatePayload,
   GitStatusUpdatePayload,
   TeammateSpawnedPayload,
-  TeammateExitedPayload
+  TeammateExitedPayload,
+  TeammateOutputPayload,
+  TeammateInputRequest
 } from '../shared/ipc-channels'
 import type { FileTreeNode, GitStatus } from '../shared/types'
 
@@ -51,6 +53,8 @@ export interface ElectronApi {
   onGitStatusUpdate: (callback: (payload: GitStatusUpdatePayload) => void) => () => void
   onTeammateSpawned: (callback: (payload: TeammateSpawnedPayload) => void) => () => void
   onTeammateExited: (callback: (payload: TeammateExitedPayload) => void) => () => void
+  onTeammateOutput: (callback: (payload: TeammateOutputPayload) => void) => () => void
+  sendTeammateInput: (req: TeammateInputRequest) => Promise<void>
 }
 
 function createOnHandler<T>(channel: string) {
@@ -85,6 +89,8 @@ const api: ElectronApi = {
   onGitStatusUpdate: createOnHandler(MainToRenderer.GIT_STATUS_UPDATE),
   onTeammateSpawned: createOnHandler(MainToRenderer.TEAM_TEAMMATE_SPAWNED),
   onTeammateExited: createOnHandler(MainToRenderer.TEAM_TEAMMATE_EXITED),
+  onTeammateOutput: createOnHandler(MainToRenderer.TEAMMATE_OUTPUT),
+  sendTeammateInput: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_INPUT, req),
 
   // Menu events
   onMenuTeamStart: createOnHandler<unknown>('menu:team-start'),
