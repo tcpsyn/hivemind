@@ -8,6 +8,8 @@ import type {
 } from '../../../shared/types'
 import { DEFAULT_SIDEBAR_WIDTH } from '../../../shared/constants'
 
+export type ViewMode = 'lead' | 'grid'
+
 export type AppAction =
   | { type: 'SET_PROJECT'; payload: { name: string; path: string } }
   | { type: 'ADD_AGENT'; payload: AgentState }
@@ -24,11 +26,19 @@ export type AppAction =
   | { type: 'DISMISS_NOTIFICATION'; payload: string }
   | { type: 'MAXIMIZE_PANE'; payload: string }
   | { type: 'RESTORE_PANE' }
+  | { type: 'SET_VIEW_MODE'; payload: ViewMode }
+  | { type: 'SET_TEAM_LEAD'; payload: string }
+  | { type: 'SELECT_TEAMMATE'; payload: string | null }
+  | { type: 'TOGGLE_COMPANION' }
 
 export interface ExtendedAppState extends Omit<AppState, 'layout'> {
   layout: AppState['layout'] & {
     sidebarCollapsed: boolean
     maximizedPaneId: string | null
+    viewMode: ViewMode
+    teamLeadId: string | null
+    selectedTeammateId: string | null
+    companionPanelCollapsed: boolean
   }
 }
 
@@ -40,7 +50,11 @@ export const initialAppState: ExtendedAppState = {
     gridConfig: { layout: 'auto', columns: 2, rows: 2 },
     activeTab: 'agents',
     sidebarCollapsed: false,
-    maximizedPaneId: null
+    maximizedPaneId: null,
+    viewMode: 'lead',
+    teamLeadId: null,
+    selectedTeammateId: null,
+    companionPanelCollapsed: false
   },
   editor: {
     openFiles: [],
@@ -133,6 +147,21 @@ export function appReducer(state: ExtendedAppState, action: AppAction): Extended
 
     case 'RESTORE_PANE':
       return { ...state, layout: { ...state.layout, maximizedPaneId: null } }
+
+    case 'SET_VIEW_MODE':
+      return { ...state, layout: { ...state.layout, viewMode: action.payload } }
+
+    case 'SET_TEAM_LEAD':
+      return { ...state, layout: { ...state.layout, teamLeadId: action.payload } }
+
+    case 'SELECT_TEAMMATE':
+      return { ...state, layout: { ...state.layout, selectedTeammateId: action.payload } }
+
+    case 'TOGGLE_COMPANION':
+      return {
+        ...state,
+        layout: { ...state.layout, companionPanelCollapsed: !state.layout.companionPanelCollapsed }
+      }
 
     default:
       return state

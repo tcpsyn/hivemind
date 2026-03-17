@@ -1,11 +1,13 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
-import { useAppDispatch } from '../state/AppContext'
+import { useAppDispatch, useAppState } from '../state/AppContext'
 import type { TeamConfig } from '../../../shared/types'
 
 export function useAgentManager() {
   const dispatch = useAppDispatch()
+  const state = useAppState()
   const [isTeamRunning, setIsTeamRunning] = useState(false)
   const agentIdsRef = useRef<Set<string>>(new Set())
+  const teamLeadSetRef = useRef(false)
 
   // Listen for menu team start/stop
   useEffect(() => {
@@ -24,7 +26,7 @@ export function useAgentManager() {
       unsubStart()
       unsubStop?.()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!window.api?.onAgentOutput) return
@@ -71,6 +73,31 @@ export function useAgentManager() {
     }
   }, [dispatch])
 
+  // Listen for teammate spawned/exited events
+  useEffect(() => {
+    const unsubSpawned = window.api?.onTeammateSpawned?.((payload) => {
+      const agent = payload.agent
+      if (!agentIdsRef.current.has(agent.id)) {
+        agentIdsRef.current.add(agent.id)
+        dispatch({ type: 'ADD_AGENT', payload: agent })
+      }
+      // Auto-select first teammate
+      if (!state.layout.selectedTeammateId) {
+        dispatch({ type: 'SELECT_TEAMMATE', payload: agent.id })
+      }
+    })
+
+    const unsubExited = window.api?.onTeammateExited?.((payload) => {
+      dispatch({ type: 'REMOVE_AGENT', payload: payload.agentId })
+      agentIdsRef.current.delete(payload.agentId)
+    })
+
+    return () => {
+      unsubSpawned?.()
+      unsubExited?.()
+    }
+  }, [dispatch, state.layout.selectedTeammateId])
+
   const startTeam = useCallback(
     async (config: TeamConfig) => {
       dispatch({ type: 'SET_PROJECT', payload: { name: config.name, path: config.project } })
@@ -80,6 +107,18 @@ export function useAgentManager() {
       for (const agent of result.agents) {
         agentIdsRef.current.add(agent.id)
         dispatch({ type: 'ADD_AGENT', payload: agent })
+
+        // First non-teammate agent becomes team lead
+        if (!teamLeadSetRef.current && !agent.isTeammate) {
+          dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id })
+          teamLeadSetRef.current = true
+        }
+      }
+
+      // If no explicit non-teammate, use the first agent as lead
+      if (!teamLeadSetRef.current && result.agents.length > 0) {
+        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id })
+        teamLeadSetRef.current = true
       }
 
       setIsTeamRunning(true)
@@ -94,6 +133,7 @@ export function useAgentManager() {
       dispatch({ type: 'REMOVE_AGENT', payload: id })
     }
     agentIdsRef.current.clear()
+    teamLeadSetRef.current = false
     setIsTeamRunning(false)
   }, [dispatch])
 
