@@ -135,6 +135,14 @@ export class TmuxProxyServer extends EventEmitter {
     if (notification.event !== 'tmux-command') return
     if (notification.exitCode !== 0) return
 
+    // Capture session name from new-session commands
+    if (notification.command === 'new-session' && Array.isArray(notification.args)) {
+      const sIdx = notification.args.indexOf('-s')
+      if (sIdx !== -1 && sIdx + 1 < notification.args.length) {
+        this.leadSessionName = notification.args[sIdx + 1]
+      }
+    }
+
     if (PANE_MUTATING_COMMANDS.includes(notification.command)) {
       this.discoverPanes().catch((err) => {
         this.emit('error', err)
@@ -143,31 +151,20 @@ export class TmuxProxyServer extends EventEmitter {
   }
 
   async discoverPanes(): Promise<void> {
-    // First, find which session the lead pane belongs to
-    let sessionFilter = ''
-    if (!this.leadSessionName) {
-      try {
-        const sessionResult = await this.execCommand(this.realTmuxPath, [
-          'display-message',
-          '-t',
-          this.leadPaneId,
-          '-p',
-          '#{session_name}'
-        ])
-        this.leadSessionName = sessionResult.stdout.trim()
-      } catch {
-        // Lead pane might not be in tmux yet, list all and filter
-      }
-    }
-    sessionFilter = this.leadSessionName || ''
+    // If we don't know the session yet, skip discovery (wait for new-session notification)
+    if (!this.leadSessionName) return
 
-    // List panes — only from the lead's session if known, otherwise all
+    // List panes only from the team's session
     let stdout: string
     try {
-      const listArgs = sessionFilter
-        ? ['list-panes', '-t', sessionFilter, '-a', '-F', '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}']
-        : ['list-panes', '-a', '-F', '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}']
-      const result = await this.execCommand(this.realTmuxPath, listArgs)
+      const result = await this.execCommand(this.realTmuxPath, [
+        'list-panes',
+        '-t',
+        this.leadSessionName,
+        '-a',
+        '-F',
+        '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
+      ])
       stdout = result.stdout
     } catch (err) {
       this.emit('error', err)
