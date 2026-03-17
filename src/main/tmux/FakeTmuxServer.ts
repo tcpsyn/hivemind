@@ -33,6 +33,33 @@ export class FakeTmuxServer extends EventEmitter {
     this.socketPath = socketPath
   }
 
+  /**
+   * Pre-register a session with a lead pane so Claude's initial
+   * queries (list-sessions, display-message, list-panes) return valid data.
+   */
+  registerDefaultSession(sessionName: string, leadPaneId: string, leadPid: number): void {
+    const pane: PaneState = {
+      paneId: leadPaneId,
+      sessionName,
+      windowName: sessionName,
+      pid: leadPid,
+      cols: 80,
+      rows: 24,
+      isActive: true,
+      outputBuffer: []
+    }
+
+    const session: SessionState = {
+      name: sessionName,
+      panes: new Map([[leadPaneId, pane]]),
+      windowCount: 1
+    }
+
+    this.sessions.set(sessionName, session)
+    // Ensure paneIndex is past the lead pane
+    this.paneIndex = Math.max(this.paneIndex, 1)
+  }
+
   async start(): Promise<void> {
     // Clean up stale socket
     try {

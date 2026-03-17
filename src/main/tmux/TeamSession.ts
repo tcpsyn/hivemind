@@ -62,9 +62,10 @@ export class TeamSession extends EventEmitter {
 
     this.leadAgent = leadAgent
 
-    // Register lead as pane %0
+    // Register lead as pane %0 in PtyManager and in the FakeTmuxServer
     if (leadAgent.id) {
       this.ptyManager.registerPane('%0', leadAgent.id)
+      this.server.registerDefaultSession(this.sessionName, '%0', leadAgent.pid ?? process.pid)
     }
 
     this.running = true
