@@ -50,7 +50,7 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
         fileName: node.name,
         language: detectLanguage(node.name),
         isModified: false,
-        isReadOnly: true,
+        isReadOnly: true
       }
       dispatch({ type: 'ADD_EDITOR_TAB', payload: tab })
       dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: node.path })
@@ -58,13 +58,10 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
     [dispatch, onFileClick]
   )
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent, node: FileTreeNode) => {
-      e.preventDefault()
-      setContextMenu({ x: e.clientX, y: e.clientY, node })
-    },
-    []
-  )
+  const handleContextMenu = useCallback((e: React.MouseEvent, node: FileTreeNode) => {
+    e.preventDefault()
+    setContextMenu({ x: e.clientX, y: e.clientY, node })
+  }, [])
 
   const handleCopyPath = useCallback(() => {
     if (contextMenu) {
@@ -88,12 +85,12 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault()
-          setFocusIndex(prev => Math.min(prev + 1, visibleNodes.length - 1))
+          setFocusIndex((prev) => Math.min(prev + 1, visibleNodes.length - 1))
           break
         }
         case 'ArrowUp': {
           e.preventDefault()
-          setFocusIndex(prev => Math.max(prev - 1, 0))
+          setFocusIndex((prev) => Math.max(prev - 1, 0))
           break
         }
         case 'Enter': {
@@ -131,7 +128,10 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
   if (loading) {
     return (
       <div className="file-tree" data-testid="file-tree">
-        <span className="file-tree-loading">Loading...</span>
+        <span className="file-tree-loading">
+          <span className="file-tree-spinner" />
+          Loading files...
+        </span>
       </div>
     )
   }

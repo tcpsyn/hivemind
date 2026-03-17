@@ -13,9 +13,9 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  background-color: #1e1e1e;
-  color: #cccccc;
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .app {
@@ -28,5 +28,5 @@ body {
 .app h1 {
   font-size: 2rem;
   font-weight: 300;
-  color: #e0e0e0;
+  color: var(--text-primary);
 }

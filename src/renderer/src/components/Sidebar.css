@@ -57,10 +57,27 @@
   font-size: 8px;
   width: 12px;
   text-align: center;
+  transition: transform var(--transition-fast);
+}
+
+.sidebar-section.collapsed .sidebar-section-chevron {
+  transform: rotate(0deg);
 }
 
 .sidebar-section-body {
   padding: var(--space-2) var(--space-3);
+  animation: section-expand 200ms ease-out;
+}
+
+@keyframes section-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .placeholder-text {

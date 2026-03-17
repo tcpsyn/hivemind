@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, memo } from 'react'
 import AgentAvatar from './AgentAvatar'
 import type { AgentState, AgentStatus } from '../../../shared/types'
 import './AgentListItem.css'
@@ -22,7 +22,7 @@ const CONTEXT_ACTIONS = [
   { id: 'history', label: 'View History' }
 ]
 
-export default function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
+function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const menuRef = useRef<HTMLDivElement>(null)
@@ -77,7 +77,7 @@ export default function AgentListItem({ agent, onClick, onContextMenu }: AgentLi
           className="agent-context-menu"
           style={{ left: menuPos.x, top: menuPos.y }}
         >
-          {CONTEXT_ACTIONS.map(action => (
+          {CONTEXT_ACTIONS.map((action) => (
             <button
               key={action.id}
               className="agent-context-menu-item"
@@ -91,3 +91,5 @@ export default function AgentListItem({ agent, onClick, onContextMenu }: AgentLi
     </>
   )
 }
+
+export default memo(AgentListItem)

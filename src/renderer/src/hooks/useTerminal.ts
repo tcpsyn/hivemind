@@ -12,12 +12,14 @@ export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElem
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+      fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
       theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#cccccc',
-        selectionBackground: '#264f78'
+        background: '#1a1a2e',
+        foreground: '#e0e0e0',
+        cursor: '#e0e0e0',
+        cursorAccent: '#1a1a2e',
+        selectionBackground: '#2a3a66',
+        selectionForeground: '#e0e0e0'
       },
       allowTransparency: false,
       scrollback: 10000

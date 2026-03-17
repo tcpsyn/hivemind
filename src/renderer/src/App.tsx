@@ -1,11 +1,14 @@
 import { AppProvider } from './state/AppContext'
 import AppShell from './components/AppShell'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App(): React.JSX.Element {
   return (
-    <AppProvider>
-      <AppShell />
-    </AppProvider>
+    <ErrorBoundary fallbackLabel="Application error">
+      <AppProvider>
+        <AppShell />
+      </AppProvider>
+    </ErrorBoundary>
   )
 }
 
