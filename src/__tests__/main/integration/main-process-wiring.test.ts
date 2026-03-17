@@ -36,6 +36,13 @@ class MockPtyManager extends EventEmitter {
 
   sendInput = vi.fn()
   resize = vi.fn()
+  registerPane = vi.fn()
+  getAgentByPaneId = vi.fn()
+  capturePane = vi.fn().mockReturnValue('')
+  getPaneInfo = vi.fn().mockReturnValue(null)
+  async createTeammatePty(): Promise<AgentState> {
+    return makeAgent()
+  }
   destroyPty = vi.fn((id: string) => {
     this.agents.delete(id)
   })
@@ -240,7 +247,7 @@ describe('Main Process Wiring', () => {
       expect(typeof services.onTeamStop).toBe('function')
     })
 
-    it('onTeamStart creates PTYs and returns agents', async () => {
+    it('onTeamStart creates TeamSession and returns lead agent', async () => {
       const { createIpcServices } = await import('../../../main/services/createIpcServices')
 
       const services = createIpcServices({
@@ -271,12 +278,15 @@ describe('Main Process Wiring', () => {
           ]
         }
       })
-      expect(result.agents).toHaveLength(2)
-      expect(result.agents[0].name).toBe('arch')
-      expect(result.agents[1].name).toBe('code')
+      // TeamSession returns only the lead agent; teammates spawn asynchronously
+      expect(result.agents).toHaveLength(1)
+      expect(result.agents[0].name).toBe('team-lead')
+
+      // Clean up the active session
+      await services.onTeamStop()
     })
 
-    it('onTeamStop destroys all PTYs', async () => {
+    it('onTeamStop destroys lead PTY and cleans up session', async () => {
       const { createIpcServices } = await import('../../../main/services/createIpcServices')
 
       const services = createIpcServices({
@@ -297,8 +307,18 @@ describe('Main Process Wiring', () => {
         } as never
       })
 
+      // Start a team first so there's a session to stop
+      await services.onTeamStart({
+        config: {
+          name: 'test',
+          project: '/tmp',
+          agents: [{ name: 'lead', role: 'Lead', command: 'claude' }]
+        }
+      })
+
       await services.onTeamStop()
-      expect(ptyManager.destroyAll).toHaveBeenCalled()
+      // TeamSession.stop() destroys individual PTYs
+      expect(ptyManager.destroyPty).toHaveBeenCalled()
     })
 
     it('onAgentInput forwards input to PtyManager', async () => {
