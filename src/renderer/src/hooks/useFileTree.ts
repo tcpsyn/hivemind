@@ -31,13 +31,16 @@ export function useFileTree() {
     mountedRef.current = true
     loadTree()
 
-    const unsubscribe = window.api.onFileChanged(() => {
-      loadTree()
-    })
+    let unsubscribe: (() => void) | undefined
+    if (window.api?.onFileChanged) {
+      unsubscribe = window.api.onFileChanged(() => {
+        loadTree()
+      })
+    }
 
     return () => {
       mountedRef.current = false
-      unsubscribe()
+      unsubscribe?.()
     }
   }, [loadTree])
 
