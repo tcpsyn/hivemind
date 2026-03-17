@@ -2,10 +2,15 @@
   "name": "hivemind",
   "version": "0.1.0",
   "description": "A desktop GUI for Claude Code agent teams",
+  "author": "Luke MacNeil <luke@macneilmediagroup.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/tcpsyn/hivemind",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build && electron-builder --mac",
+    "build": "electron-vite build && electron-builder",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:win": "electron-vite build && electron-builder --win",
     "build:vite": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "vitest run --passWithNoTests",
@@ -69,7 +74,17 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "resources/icon.icns",
-      "target": "dir"
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "zip", "arch": ["arm64"] }
+      ]
+    },
+    "win": {
+      "icon": "resources/icon.png",
+      "target": [
+        { "target": "nsis" },
+        { "target": "zip" }
+      ]
     },
     "extraResources": [
       {
