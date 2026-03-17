@@ -12,7 +12,7 @@ export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElem
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
-      fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+      fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
       theme: {
         background: '#1a1a2e',
         foreground: '#e0e0e0',

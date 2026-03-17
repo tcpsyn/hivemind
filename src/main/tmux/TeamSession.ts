@@ -49,13 +49,15 @@ export class TeamSession extends EventEmitter {
 
     this.wireServerEvents()
 
+    const leadEnv = this.getLeadEnv()
     const leadAgent = await this.ptyManager.createPty(
       {
         name: 'team-lead',
         role: 'lead',
         command: leadCommand || 'claude'
       },
-      this.projectPath
+      this.projectPath,
+      leadEnv
     )
 
     this.leadAgent = leadAgent
