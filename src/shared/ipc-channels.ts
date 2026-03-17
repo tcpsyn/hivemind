@@ -15,7 +15,9 @@ export const MainToRenderer = {
   AGENT_INPUT_NEEDED: 'agent:input-needed',
   FILE_CHANGED: 'file:changed',
   FILE_TREE_UPDATE: 'file:tree-update',
-  GIT_STATUS_UPDATE: 'git:status-update'
+  GIT_STATUS_UPDATE: 'git:status-update',
+  TEAM_TEAMMATE_SPAWNED: 'team:teammate-spawned',
+  TEAM_TEAMMATE_EXITED: 'team:teammate-exited'
 } as const
 
 // Renderer → Main channels (invoke/handle pattern)
@@ -133,4 +135,18 @@ export interface TeamStartRequest {
 
 export interface TeamStartResponse {
   agents: AgentState[]
+}
+
+export interface TeammateSpawnedPayload {
+  agentId: string
+  agent: AgentState
+  paneId: string
+  sessionName: string
+}
+
+export interface TeammateExitedPayload {
+  agentId: string
+  paneId: string
+  sessionName: string
+  exitCode: number
 }

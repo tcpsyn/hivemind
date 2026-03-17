@@ -3,7 +3,7 @@ import type { FileService } from './FileService'
 import type { GitService } from './GitService'
 import type { TeamConfigService } from './TeamConfigService'
 import type { IpcServices } from '../ipc/handlers'
-import type { AgentState } from '../../shared/types'
+import { TeamSession } from '../tmux/TeamSession'
 
 export interface ServiceDeps {
   ptyManager: PtyManager
@@ -14,6 +14,7 @@ export interface ServiceDeps {
 
 export function createIpcServices(deps: ServiceDeps): IpcServices {
   const { ptyManager, fileService, gitService, teamConfigService } = deps
+  let activeSession: TeamSession | null = null
 
   return {
     onAgentCreate: async (req) => {
@@ -75,18 +76,24 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
 
     onTeamStart: async (req) => {
       const config = teamConfigService.enrichConfig(req.config)
-      const agents: AgentState[] = []
 
-      for (const agentConfig of config.agents) {
-        const agent = await ptyManager.createPty(agentConfig, config.project)
-        agents.push(agent)
+      if (activeSession) {
+        await activeSession.stop()
       }
 
-      return { agents }
+      activeSession = new TeamSession(config.name, config.project, ptyManager)
+      const leadAgent = await activeSession.start()
+
+      return { agents: [leadAgent] }
     },
 
     onTeamStop: async () => {
-      ptyManager.destroyAll()
-    }
+      if (activeSession) {
+        await activeSession.stop()
+        activeSession = null
+      }
+    },
+
+    getActiveSession: () => activeSession
   }
 }

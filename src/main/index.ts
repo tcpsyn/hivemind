@@ -13,12 +13,17 @@ import {
   registerIpcHandlers,
   sendAgentOutput,
   sendAgentStatusChange,
-  sendAgentInputNeeded
+  sendAgentInputNeeded,
+  sendTeammateSpawned,
+  sendTeammateExited
 } from './ipc/handlers'
+import type { IpcServices } from './ipc/handlers'
+import type { AgentState } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 let ptyManager: PtyManager | null = null
 let notificationService: NotificationService | null = null
+let ipcServices: IpcServices | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -235,15 +240,39 @@ function initializeServices(): void {
     }
   })
 
+  ptyManager.on(
+    'agent-spawned',
+    (agentId: string, agent: AgentState, paneId: string, sessionName: string) => {
+      if (mainWindow) {
+        sendTeammateSpawned(mainWindow, { agentId, agent, paneId, sessionName })
+      }
+    }
+  )
+
+  ptyManager.on('exit', (agentId: string, exitCode: number) => {
+    if (mainWindow && ptyManager) {
+      const agents = ptyManager.getAll()
+      const agent = agents.get(agentId)
+      if (agent?.isTeammate && agent.paneId && agent.sessionName) {
+        sendTeammateExited(mainWindow, {
+          agentId,
+          paneId: agent.paneId,
+          sessionName: agent.sessionName,
+          exitCode
+        })
+      }
+    }
+  })
+
   notificationService = new NotificationService(ptyManager)
 
-  const services = createIpcServices({
+  ipcServices = createIpcServices({
     ptyManager,
     fileService,
     gitService,
     teamConfigService
   })
-  registerIpcHandlers(services)
+  registerIpcHandlers(ipcServices)
 }
 
 app.whenReady().then(() => {
@@ -267,6 +296,12 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
+  // Stop active team session (cleans up socket + PTYs)
+  const session = ipcServices?.getActiveSession?.()
+  if (session) {
+    session.stop().catch(() => {})
+  }
+
   if (ptyManager) {
     ptyManager.destroyAll()
   }
