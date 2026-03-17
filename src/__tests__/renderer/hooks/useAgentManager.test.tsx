@@ -31,13 +31,38 @@ const mockTeamConfig: TeamConfig = {
 
 type StatusCb = (payload: { agentId: string; status: string; agent: AgentState }) => void
 type InputCb = (payload: { agentId: string; agentName: string; prompt?: string }) => void
+type AutoStartCb = (data: { projectName: string; projectPath: string; agents: AgentState[] }) => void
+type MenuStartCb = (config: unknown) => void
+type MenuStopCb = () => void
+type SpawnedCb = (payload: { agent: AgentState; paneId: string; sessionName: string }) => void
+type ExitedCb = (payload: { agentId: string; paneId: string; sessionName: string; exitCode: number }) => void
+type RenamedCb = (payload: { agentId: string; name: string }) => void
+type TeammateStatusCb = (payload: { agentId: string; model?: string; contextPercent?: string; branch?: string }) => void
+type TeammateOutputCb = (payload: { paneId: string; data: string }) => void
 
 let capturedStatusCb: StatusCb | null = null
 let capturedInputCb: InputCb | null = null
+let capturedAutoStartCb: AutoStartCb | null = null
+let capturedMenuStartCb: MenuStartCb | null = null
+let capturedMenuStopCb: MenuStopCb | null = null
+let capturedSpawnedCb: SpawnedCb | null = null
+let capturedExitedCb: ExitedCb | null = null
+let capturedRenamedCb: RenamedCb | null = null
+let capturedTeammateStatusCb: TeammateStatusCb | null = null
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let _capturedTeammateOutputCb: TeammateOutputCb | null = null
 
 beforeEach(() => {
   capturedStatusCb = null
   capturedInputCb = null
+  capturedAutoStartCb = null
+  capturedMenuStartCb = null
+  capturedMenuStopCb = null
+  capturedSpawnedCb = null
+  capturedExitedCb = null
+  capturedRenamedCb = null
+  capturedTeammateStatusCb = null
+  _capturedTeammateOutputCb = null
 
   Object.defineProperty(window, 'api', {
     value: {
@@ -64,7 +89,40 @@ beforeEach(() => {
       }),
       onFileChanged: vi.fn().mockReturnValue(vi.fn()),
       onFileTreeUpdate: vi.fn().mockReturnValue(vi.fn()),
-      onGitStatusUpdate: vi.fn().mockReturnValue(vi.fn())
+      onGitStatusUpdate: vi.fn().mockReturnValue(vi.fn()),
+      onTeamAutoStarted: vi.fn().mockImplementation((cb: AutoStartCb) => {
+        capturedAutoStartCb = cb
+        return vi.fn()
+      }),
+      onMenuTeamStart: vi.fn().mockImplementation((cb: MenuStartCb) => {
+        capturedMenuStartCb = cb
+        return vi.fn()
+      }),
+      onMenuTeamStop: vi.fn().mockImplementation((cb: MenuStopCb) => {
+        capturedMenuStopCb = cb
+        return vi.fn()
+      }),
+      onTeammateSpawned: vi.fn().mockImplementation((cb: SpawnedCb) => {
+        capturedSpawnedCb = cb
+        return vi.fn()
+      }),
+      onTeammateExited: vi.fn().mockImplementation((cb: ExitedCb) => {
+        capturedExitedCb = cb
+        return vi.fn()
+      }),
+      onTeammateRenamed: vi.fn().mockImplementation((cb: RenamedCb) => {
+        capturedRenamedCb = cb
+        return vi.fn()
+      }),
+      onTeammateStatus: vi.fn().mockImplementation((cb: TeammateStatusCb) => {
+        capturedTeammateStatusCb = cb
+        return vi.fn()
+      }),
+      onTeammateOutput: vi.fn().mockImplementation((cb: TeammateOutputCb) => {
+        _capturedTeammateOutputCb = cb
+        return vi.fn()
+      }),
+      sendTeammateInput: vi.fn().mockResolvedValue(undefined)
     },
     writable: true,
     configurable: true
@@ -91,27 +149,23 @@ function renderWithState() {
 
 describe('useAgentManager', () => {
   describe('IPC subscriptions', () => {
-    it('subscribes to agent:output, agent:status-change, and agent:input-needed on mount', () => {
+    it('subscribes to agent:status-change and agent:input-needed on mount', () => {
       renderAgentManager()
 
-      expect(window.api.onAgentOutput).toHaveBeenCalledTimes(1)
       expect(window.api.onAgentStatusChange).toHaveBeenCalledTimes(1)
       expect(window.api.onAgentInputNeeded).toHaveBeenCalledTimes(1)
     })
 
     it('unsubscribes from all events on unmount', () => {
-      const unsubOutput = vi.fn()
       const unsubStatus = vi.fn()
       const unsubInput = vi.fn()
 
-      ;(window.api.onAgentOutput as ReturnType<typeof vi.fn>).mockReturnValue(unsubOutput)
       ;(window.api.onAgentStatusChange as ReturnType<typeof vi.fn>).mockReturnValue(unsubStatus)
       ;(window.api.onAgentInputNeeded as ReturnType<typeof vi.fn>).mockReturnValue(unsubInput)
 
       const { unmount } = renderAgentManager()
       unmount()
 
-      expect(unsubOutput).toHaveBeenCalledTimes(1)
       expect(unsubStatus).toHaveBeenCalledTimes(1)
       expect(unsubInput).toHaveBeenCalledTimes(1)
     })
@@ -321,6 +375,186 @@ describe('useAgentManager', () => {
       })
 
       expect(result.current.isTeamRunning).toBe(false)
+    })
+  })
+
+  describe('menu integration', () => {
+    it('subscribes to onMenuTeamStart on mount', () => {
+      renderAgentManager()
+      expect(window.api.onMenuTeamStart).toHaveBeenCalledTimes(1)
+    })
+
+    it('subscribes to onMenuTeamStop on mount', () => {
+      renderAgentManager()
+      expect(window.api.onMenuTeamStop).toHaveBeenCalledTimes(1)
+    })
+
+    it('triggers team start when menu:team-start fires', async () => {
+      ;(window.api.teamStart as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agents: [makeAgent({ id: 'menu-agent-1', name: 'lead' })]
+      })
+
+      const { result } = renderWithState()
+
+      await act(async () => {
+        capturedMenuStartCb?.(mockTeamConfig)
+        // Allow the async teamStart to complete
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+
+      expect(window.api.teamStart).toHaveBeenCalledWith({ config: mockTeamConfig })
+      expect(result.current.manager.isTeamRunning).toBe(true)
+    })
+
+    it('triggers team stop when menu:team-stop fires', async () => {
+      ;(window.api.teamStart as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agents: [makeAgent()]
+      })
+
+      const { result } = renderWithState()
+
+      // Start a team first
+      await act(async () => {
+        await result.current.manager.startTeam(mockTeamConfig)
+      })
+      expect(result.current.manager.isTeamRunning).toBe(true)
+
+      // Fire menu stop
+      await act(async () => {
+        capturedMenuStopCb?.()
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      })
+
+      expect(window.api.teamStop).toHaveBeenCalled()
+      expect(result.current.manager.isTeamRunning).toBe(false)
+    })
+  })
+
+  describe('auto-start', () => {
+    it('subscribes to onTeamAutoStarted on mount', () => {
+      renderAgentManager()
+      expect(window.api.onTeamAutoStarted).toHaveBeenCalledTimes(1)
+    })
+
+    it('adds agents and sets project when auto-start fires', () => {
+      const agent1 = makeAgent({ id: 'auto-1', name: 'lead' })
+      const agent2 = makeAgent({ id: 'auto-2', name: 'coder', isTeammate: true })
+
+      const { result } = renderWithState()
+
+      act(() => {
+        capturedAutoStartCb?.({
+          projectName: 'my-project',
+          projectPath: '/home/user/my-project',
+          agents: [agent1, agent2]
+        })
+      })
+
+      expect(result.current.state.project.name).toBe('my-project')
+      expect(result.current.state.project.path).toBe('/home/user/my-project')
+      expect(result.current.state.agents.size).toBe(2)
+      expect(result.current.manager.isTeamRunning).toBe(true)
+    })
+
+    it('sets first non-teammate agent as team lead', () => {
+      const lead = makeAgent({ id: 'lead-1', name: 'lead', isTeammate: false })
+      const teammate = makeAgent({ id: 'tm-1', name: 'researcher', isTeammate: true })
+
+      const { result } = renderWithState()
+
+      act(() => {
+        capturedAutoStartCb?.({
+          projectName: 'proj',
+          projectPath: '/proj',
+          agents: [lead, teammate]
+        })
+      })
+
+      expect(result.current.state.layout.teamLeadId).toBe('lead-1')
+    })
+  })
+
+  describe('teammate events', () => {
+    it('adds agent when teammate-spawned fires', () => {
+      const { result } = renderWithState()
+
+      act(() => {
+        capturedSpawnedCb?.({
+          agent: makeAgent({ id: 'tmux-%1', name: 'researcher', isTeammate: true }),
+          paneId: '%1',
+          sessionName: 'test-team'
+        })
+      })
+
+      expect(result.current.state.agents.has('tmux-%1')).toBe(true)
+      expect(result.current.state.agents.get('tmux-%1')?.name).toBe('researcher')
+    })
+
+    it('removes agent when teammate-exited fires', async () => {
+      ;(window.api.teamStart as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agents: [makeAgent({ id: 'tmux-%1', name: 'researcher', isTeammate: true })]
+      })
+
+      const { result } = renderWithState()
+
+      await act(async () => {
+        await result.current.manager.startTeam(mockTeamConfig)
+      })
+
+      act(() => {
+        capturedExitedCb?.({
+          agentId: 'tmux-%1',
+          paneId: '%1',
+          sessionName: 'test',
+          exitCode: 0
+        })
+      })
+
+      expect(result.current.state.agents.has('tmux-%1')).toBe(false)
+    })
+
+    it('updates agent name when teammate-renamed fires', async () => {
+      ;(window.api.teamStart as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agents: [makeAgent({ id: 'tmux-%1', name: 'bash', isTeammate: true })]
+      })
+
+      const { result } = renderWithState()
+
+      await act(async () => {
+        await result.current.manager.startTeam(mockTeamConfig)
+      })
+
+      act(() => {
+        capturedRenamedCb?.({ agentId: 'tmux-%1', name: 'researcher' })
+      })
+
+      expect(result.current.state.agents.get('tmux-%1')?.name).toBe('researcher')
+    })
+
+    it('updates agent status info when teammate-status fires', async () => {
+      ;(window.api.teamStart as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agents: [makeAgent({ id: 'tmux-%1', name: 'researcher', isTeammate: true })]
+      })
+
+      const { result } = renderWithState()
+
+      await act(async () => {
+        await result.current.manager.startTeam(mockTeamConfig)
+      })
+
+      act(() => {
+        capturedTeammateStatusCb?.({
+          agentId: 'tmux-%1',
+          model: 'Opus 4.6',
+          contextPercent: '15%',
+          branch: 'feature/test'
+        })
+      })
+
+      const agent = result.current.state.agents.get('tmux-%1')
+      expect(agent?.model).toBe('Opus 4.6')
+      expect(agent?.contextPercent).toBe('15%')
+      expect(agent?.branch).toBe('feature/test')
     })
   })
 })

@@ -28,7 +28,7 @@ const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoi
   return { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput }
 })
 
-vi.mock('xterm', () => ({
+vi.mock('@xterm/xterm', () => ({
   Terminal: function () {
     return mockTerminal
   }

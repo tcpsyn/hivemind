@@ -4,37 +4,6 @@ import type { FileTreeNode } from '../../shared/types'
 
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'out'])
 
-const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
-  '.ts': 'typescript',
-  '.tsx': 'typescript',
-  '.js': 'javascript',
-  '.jsx': 'javascript',
-  '.css': 'css',
-  '.scss': 'scss',
-  '.less': 'less',
-  '.html': 'html',
-  '.json': 'json',
-  '.md': 'markdown',
-  '.py': 'python',
-  '.yml': 'yaml',
-  '.yaml': 'yaml',
-  '.sh': 'shell',
-  '.bash': 'shell',
-  '.zsh': 'shell',
-  '.rs': 'rust',
-  '.go': 'go',
-  '.java': 'java',
-  '.rb': 'ruby',
-  '.toml': 'toml',
-  '.xml': 'xml',
-  '.svg': 'xml',
-  '.sql': 'sql',
-  '.graphql': 'graphql',
-  '.gql': 'graphql',
-  '.vue': 'vue',
-  '.svelte': 'svelte'
-}
-
 export class FileService {
   async readFile(filePath: string): Promise<string> {
     const stat = await fs.stat(filePath)
@@ -51,11 +20,6 @@ export class FileService {
 
   async getFileTree(rootPath: string): Promise<FileTreeNode[]> {
     return this.buildTree(rootPath)
-  }
-
-  detectLanguage(filePath: string): string {
-    const ext = path.extname(filePath).toLowerCase()
-    return EXTENSION_LANGUAGE_MAP[ext] ?? 'plaintext'
   }
 
   private async buildTree(dirPath: string): Promise<FileTreeNode[]> {

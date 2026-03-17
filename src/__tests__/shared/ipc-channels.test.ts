@@ -31,7 +31,6 @@ describe('IPC channels', () => {
 
   describe('RendererToMain', () => {
     it('defines all expected invoke channels', () => {
-      expect(RendererToMain.AGENT_CREATE).toBe('agent:create')
       expect(RendererToMain.AGENT_INPUT).toBe('agent:input')
       expect(RendererToMain.AGENT_STOP).toBe('agent:stop')
       expect(RendererToMain.AGENT_RESTART).toBe('agent:restart')
@@ -40,7 +39,6 @@ describe('IPC channels', () => {
       expect(RendererToMain.FILE_WRITE).toBe('file:write')
       expect(RendererToMain.FILE_TREE_REQUEST).toBe('file:tree-request')
       expect(RendererToMain.GIT_DIFF).toBe('git:diff')
-      expect(RendererToMain.GIT_STATUS).toBe('git:status')
       expect(RendererToMain.TEAM_START).toBe('team:start')
       expect(RendererToMain.TEAM_STOP).toBe('team:stop')
       expect(RendererToMain.TEAMMATE_INPUT).toBe('teammate:input')

@@ -8,6 +8,12 @@ export function useAgentManager() {
   const [isTeamRunning, setIsTeamRunning] = useState(false)
   const agentIdsRef = useRef<Set<string>>(new Set())
   const teamLeadSetRef = useRef(false)
+  const selectedTeammateIdRef = useRef<string | null>(null)
+  const startTeamRef = useRef<(config: TeamConfig) => Promise<void>>()
+  const stopTeamRef = useRef<() => Promise<void>>()
+
+  // Keep refs in sync
+  selectedTeammateIdRef.current = state.layout.selectedTeammateId
 
   // Listen for auto-started team session from main process
   useEffect(() => {
@@ -31,17 +37,17 @@ export function useAgentManager() {
     return () => { unsubAutoStart?.() }
   }, [dispatch])
 
-  // Listen for menu team start/stop
+  // Listen for menu team start/stop — use refs to avoid stale closures
   useEffect(() => {
     if (!window.api?.onMenuTeamStart) return
 
     const unsubStart = window.api.onMenuTeamStart((config: unknown) => {
       const teamConfig = config as TeamConfig
-      startTeam(teamConfig)
+      startTeamRef.current?.(teamConfig)
     })
 
     const unsubStop = window.api.onMenuTeamStop?.(() => {
-      stopTeam()
+      stopTeamRef.current?.()
     })
 
     return () => {
@@ -51,11 +57,7 @@ export function useAgentManager() {
   }, [])
 
   useEffect(() => {
-    if (!window.api?.onAgentOutput) return
-
-    const unsubOutput = window.api.onAgentOutput(() => {
-      // Output is handled directly by useTerminal hook per-pane
-    })
+    if (!window.api?.onAgentStatusChange) return
 
     const unsubStatus = window.api.onAgentStatusChange((payload) => {
       if (!agentIdsRef.current.has(payload.agentId)) {
@@ -89,22 +91,29 @@ export function useAgentManager() {
     })
 
     return () => {
-      unsubOutput()
       unsubStatus()
       unsubInput()
     }
   }, [dispatch])
 
   // Listen for teammate spawned/exited events
+  // Uses selectedTeammateIdRef to avoid tearing down subscriptions on selection change
   useEffect(() => {
+    // Build a reverse map from paneId to real agent ID for activity tracking
+    const paneToAgentId = new Map<string, string>()
+
     const unsubSpawned = window.api?.onTeammateSpawned?.((payload) => {
       const agent = payload.agent
       if (!agentIdsRef.current.has(agent.id)) {
         agentIdsRef.current.add(agent.id)
         dispatch({ type: 'ADD_AGENT', payload: agent })
       }
+      // Register paneId -> agentId mapping for activity tracking
+      if (agent.paneId) {
+        paneToAgentId.set(agent.paneId, agent.id)
+      }
       // Auto-select first teammate
-      if (!state.layout.selectedTeammateId) {
+      if (!selectedTeammateIdRef.current) {
         dispatch({ type: 'SELECT_TEAMMATE', payload: agent.id })
       }
     })
@@ -133,16 +142,10 @@ export function useAgentManager() {
       })
     })
 
-    // Track teammate activity from output events
-    const paneToAgentId = new Map<string, string>()
+    // Track teammate activity from output events using real agent IDs
     const unsubOutput = window.api?.onTeammateOutput?.((payload) => {
-      // Find agent ID for this pane
-      let agentId = paneToAgentId.get(payload.paneId)
-      if (!agentId) {
-        agentId = `tmux-${payload.paneId}`
-        paneToAgentId.set(payload.paneId, agentId)
-      }
-      if (agentIdsRef.current.has(agentId)) {
+      const agentId = paneToAgentId.get(payload.paneId)
+      if (agentId && agentIdsRef.current.has(agentId)) {
         dispatch({
           type: 'UPDATE_AGENT',
           payload: { id: agentId, lastActivity: Date.now() }
@@ -157,7 +160,7 @@ export function useAgentManager() {
       unsubStatus?.()
       unsubOutput?.()
     }
-  }, [dispatch, state.layout.selectedTeammateId])
+  }, [dispatch])
 
   const startTeam = useCallback(
     async (config: TeamConfig) => {
@@ -197,6 +200,10 @@ export function useAgentManager() {
     teamLeadSetRef.current = false
     setIsTeamRunning(false)
   }, [dispatch])
+
+  // Keep refs in sync for menu handler closures
+  startTeamRef.current = startTeam
+  stopTeamRef.current = stopTeam
 
   const stopAgent = useCallback(async (agentId: string) => {
     await window.api.agentStop({ agentId })

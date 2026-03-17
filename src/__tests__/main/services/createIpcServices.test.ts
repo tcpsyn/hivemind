@@ -50,23 +50,6 @@ describe('createIpcServices', () => {
     deps = createMockDeps()
   })
 
-  describe('onAgentCreate', () => {
-    it('creates a PTY and returns agent info', async () => {
-      const services = createIpcServices(deps)
-      const result = await services.onAgentCreate({
-        config: { name: 'coder', role: 'Implementation', command: 'claude' },
-        cwd: '/project'
-      })
-
-      expect(deps.ptyManager.createPty).toHaveBeenCalledWith(
-        { name: 'coder', role: 'Implementation', command: 'claude' },
-        '/project'
-      )
-      expect(result.agentId).toBe('agent-1')
-      expect(result.agent).toBeDefined()
-    })
-  })
-
   describe('onAgentInput', () => {
     it('sends input to the PTY manager', async () => {
       const services = createIpcServices(deps)
@@ -155,15 +138,6 @@ describe('createIpcServices', () => {
 
       expect(deps.gitService.getDiff).toHaveBeenCalledWith('/project/index.ts')
       expect(result).toEqual({ diff: 'diff output', filePath: '/project/index.ts' })
-    })
-  })
-
-  describe('onGitStatus', () => {
-    it('returns git status', async () => {
-      const services = createIpcServices(deps)
-      const result = await services.onGitStatus({ rootPath: '/project' })
-
-      expect(result).toEqual({ files: [], branch: 'main', ahead: 0, behind: 0 })
     })
   })
 

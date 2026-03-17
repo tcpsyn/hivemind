@@ -24,19 +24,9 @@
   --status-waiting: #fbbf24;
   --status-stopped: #f87171;
 
-  /* Agent colors */
-  --agent-coral: #ff6b6b;
-  --agent-teal: #4ecdc4;
-  --agent-sky: #45b7d1;
-  --agent-sage: #96ceb4;
-  --agent-gold: #ffeaa7;
-  --agent-plum: #dda0dd;
-  --agent-mint: #98d8c8;
-  --agent-amber: #f7dc6f;
-  --agent-lavender: #bb8fce;
-  --agent-azure: #85c1e9;
+  /* Agent colors — only peach is used in CSS (git modified status).
+     All 12 colors are applied via inline styles from constants.ts. */
   --agent-peach: #f0b27a;
-  --agent-emerald: #82e0aa;
 
   /* Spacing (4px base) */
   --space-1: 4px;
@@ -80,7 +70,6 @@
   --topbar-height: 40px;
   --bottombar-height: 28px;
   --sidebar-min-width: 48px;
-  --sidebar-max-width: 500px;
 
   /* Scrollbar */
   --scrollbar-width: 6px;

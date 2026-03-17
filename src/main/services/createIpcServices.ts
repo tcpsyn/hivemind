@@ -18,11 +18,6 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
   let activeSession: TeamSession | null = null
 
   return {
-    onAgentCreate: async (req) => {
-      const agent = await ptyManager.createPty(req.config, req.cwd)
-      return { agentId: agent.id, agent }
-    },
-
     onAgentInput: async (req) => {
       ptyManager.sendInput(req.agentId, req.data)
     },
@@ -71,10 +66,6 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
       return { diff, filePath: req.filePath }
     },
 
-    onGitStatus: async (_req) => {
-      return gitService.getStatus()
-    },
-
     onTeamStart: async (req) => {
       const config = teamConfigService.enrichConfig(req.config)
 
@@ -99,19 +90,15 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
 
     onTeammateInput: async (req) => {
       if (!activeSession) throw new Error('No active team session')
-
-      // Handle resize requests (paneId prefixed with __resize__)
-      if (req.paneId.startsWith('__resize__')) {
-        const realPaneId = req.paneId.replace('__resize__', '')
-        const { cols, rows } = JSON.parse(req.data)
-        const server = activeSession.getServer()
-        if (server) {
-          await server.resizePane(realPaneId, cols, rows)
-        }
-        return
-      }
-
       await activeSession.sendTeammateInput(req.paneId, req.data)
+    },
+
+    onTeammateResize: async (req) => {
+      if (!activeSession) throw new Error('No active team session')
+      const server = activeSession.getServer()
+      if (server) {
+        await server.resizePane(req.paneId, req.cols, req.rows)
+      }
     },
 
     getActiveSession: () => activeSession

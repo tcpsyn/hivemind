@@ -11,6 +11,7 @@ import { GitService } from './services/GitService'
 import { createIpcServices } from './services/createIpcServices'
 import {
   registerIpcHandlers,
+  removeIpcHandlers,
   sendAgentOutput,
   sendAgentStatusChange,
   sendAgentInputNeeded,
@@ -20,6 +21,7 @@ import {
   sendTeammateRenamed,
   sendTeammateStatus
 } from './ipc/handlers'
+import { FileExplorerService } from './services/FileExplorerService'
 import { TeamSession } from './tmux/TeamSession'
 import type { IpcServices } from './ipc/handlers'
 import type { AgentState } from '../shared/types'
@@ -27,6 +29,7 @@ import type { AgentState } from '../shared/types'
 let mainWindow: BrowserWindow | null = null
 let ptyManager: PtyManager | null = null
 let notificationService: NotificationService | null = null
+let fileExplorerService: FileExplorerService | null = null
 let ipcServices: IpcServices | null = null
 
 function createWindow(): void {
@@ -185,7 +188,12 @@ function buildAppMenu(): void {
         {
           label: 'About Hivemind',
           click: () => {
-            mainWindow?.webContents.send('menu:about')
+            dialog.showMessageBox({
+              type: 'info',
+              title: 'About Hivemind',
+              message: 'Hivemind',
+              detail: 'A desktop GUI for Claude Code agent teams.'
+            })
           }
         }
       ]
@@ -240,6 +248,29 @@ function wireTeamSessionEvents(session: TeamSession): void {
   })
 }
 
+function disposeServices(): void {
+  const session = ipcServices?.getActiveSession?.()
+  if (session) {
+    session.stop().catch(() => {})
+  }
+  if (ptyManager) {
+    ptyManager.destroyAll()
+    ptyManager = null
+  }
+  if (notificationService) {
+    notificationService.dispose()
+    notificationService = null
+  }
+  if (fileExplorerService) {
+    fileExplorerService.stop().catch(() => {})
+    fileExplorerService = null
+  }
+  if (ipcServices) {
+    removeIpcHandlers()
+    ipcServices = null
+  }
+}
+
 function initializeServices(): void {
   TeamSession.cleanupStaleSockets()
   ptyManager = new PtyManager()
@@ -285,6 +316,7 @@ function initializeServices(): void {
   })
 
   notificationService = new NotificationService(ptyManager)
+  fileExplorerService = new FileExplorerService()
 
   ipcServices = createIpcServices({
     ptyManager,
@@ -298,6 +330,14 @@ function initializeServices(): void {
 
 async function autoStartTeamSession(projectName: string, projectPath: string): Promise<void> {
   if (!ipcServices || !mainWindow) return
+
+  // Start file explorer service to push file/git change events to renderer
+  if (fileExplorerService) {
+    fileExplorerService.start(projectPath, mainWindow).catch((err) => {
+      console.error('FileExplorerService start failed:', err)
+    })
+  }
+
   try {
     const result = await ipcServices.onTeamStart({
       config: { name: projectName, project: projectPath, agents: [] }
@@ -315,7 +355,7 @@ async function autoStartTeamSession(projectName: string, projectPath: string): P
 
 // Set app name for dock/taskbar display (overrides "Electron" in dev mode)
 app.name = 'Hivemind'
-if (process.platform === 'darwin') {
+if (process.platform === 'darwin' && app.dock) {
   app.dock.setBadge('')
 }
 
@@ -348,6 +388,8 @@ app.whenReady().then(async () => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
+      // Dispose old services before creating new ones to prevent orphaned PTYs
+      disposeServices()
       createWindow()
       initializeServices()
     }
@@ -361,18 +403,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('before-quit', () => {
-  // Stop active team session (cleans up socket + PTYs)
-  const session = ipcServices?.getActiveSession?.()
-  if (session) {
-    session.stop().catch(() => {})
-  }
-
-  if (ptyManager) {
-    ptyManager.destroyAll()
-  }
-  if (notificationService) {
-    notificationService.dispose()
-  }
+  disposeServices()
 })
 
 export { updateWindowTitle }

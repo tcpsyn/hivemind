@@ -25,7 +25,6 @@ export class TeamSession extends EventEmitter {
   private running = false
   private signalHandlers: { event: string; handler: () => void }[] = []
   private realTmuxPath: string
-  private idCounter = 0
 
   constructor(sessionName: string, projectPath: string, ptyManager?: PtyManager) {
     super()
@@ -94,10 +93,23 @@ export class TeamSession extends EventEmitter {
       '#{socket_path},#{pid},0'
     ])
 
+    // Query the actual lead pane ID instead of assuming %0
+    const { stdout: leadPaneOut } = await execFileAsync(this.realTmuxPath, [
+      '-L',
+      this.tmuxSocketName,
+      'list-panes',
+      '-t',
+      this.sessionName,
+      '-F',
+      '#{pane_id}'
+    ])
+    const leadPaneId = leadPaneOut.trim().split('\n')[0] || '%0'
+
     this.proxyServer = new TmuxProxyServer(this.socketPath, this.realTmuxPath, {
       pollIntervalMs: 2000,
       tmuxSocketName: this.tmuxSocketName,
-      leadSessionName: this.sessionName
+      leadSessionName: this.sessionName,
+      leadPaneId
     })
     await this.proxyServer.start()
 
@@ -125,6 +137,10 @@ export class TeamSession extends EventEmitter {
 
     this.removeSignalHandlers()
 
+    // Destroy teammate PTYs before clearing the maps
+    for (const [agentId] of this.teammates) {
+      this.ptyManager.destroyPty(agentId)
+    }
     this.teammates.clear()
     this.paneIdToAgentId.clear()
 
@@ -268,6 +284,14 @@ export class TeamSession extends EventEmitter {
 
     this.proxyServer.on('error', (err: Error) => {
       this.emit('error', err)
+    })
+
+    this.proxyServer.on('server-error', (info: { failures: number; message: string }) => {
+      this.emit('server-error', info)
+    })
+
+    this.proxyServer.on('server-recovered', () => {
+      this.emit('server-recovered')
     })
   }
 

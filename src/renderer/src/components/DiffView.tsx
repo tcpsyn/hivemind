@@ -28,12 +28,15 @@ export default function DiffView({ filePath, language }: DiffViewProps) {
 
     editorRef.current = diffEditor
 
+    let originalModel: monaco.editor.ITextModel | null = null
+    let modifiedModel: monaco.editor.ITextModel | null = null
+
     Promise.all([window.api.gitDiff({ filePath }), window.api.fileRead({ filePath })]).then(
       ([diffRes, fileRes]) => {
         if (!editorRef.current) return
 
-        const originalModel = monaco.editor.createModel(diffRes.original ?? '', language)
-        const modifiedModel = monaco.editor.createModel(fileRes.content, language)
+        originalModel = monaco.editor.createModel(diffRes.original ?? '', language)
+        modifiedModel = monaco.editor.createModel(fileRes.content, language)
 
         editorRef.current.setModel({ original: originalModel, modified: modifiedModel })
       }
@@ -41,6 +44,8 @@ export default function DiffView({ filePath, language }: DiffViewProps) {
 
     return () => {
       diffEditor.dispose()
+      originalModel?.dispose()
+      modifiedModel?.dispose()
     }
   }, [filePath, language, sideBySide])
 

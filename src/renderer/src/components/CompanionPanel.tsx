@@ -6,6 +6,19 @@ import { TeammateCard } from './TeammateCard'
 import type { AgentState } from '../../../shared/types'
 import './CompanionPanel.css'
 
+function CollapseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      className="companion-collapse-btn"
+      onClick={onClick}
+      title="Collapse panel (⌘\)"
+      aria-label="Collapse companion panel"
+    >
+      ▸
+    </button>
+  )
+}
+
 interface CompanionPanelProps {
   teammates: AgentState[]
 }
@@ -93,6 +106,7 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
         <div className="companion-dashboard-header">
           <span className="companion-dashboard-title">Teammates</span>
           <span className="companion-dashboard-count">{teammates.length}</span>
+          <CollapseButton onClick={() => dispatch({ type: 'TOGGLE_COMPANION' })} />
         </div>
         <div className="companion-dashboard-list">
           {sortedTeammates.map((agent) => (

@@ -68,28 +68,13 @@ export class NotificationService {
   }
 
   private updateDockBadge(): void {
+    if (process.platform !== 'darwin' || !app.dock) return
     const count = this.notifications.length
     app.dock.setBadge(count > 0 ? String(count) : '')
   }
 
   getActiveNotifications(): TrackedNotification[] {
     return [...this.notifications]
-  }
-
-  getNotificationsByAgent(): Map<string, TrackedNotification[]> {
-    const grouped = new Map<string, TrackedNotification[]>()
-    for (const notif of this.notifications) {
-      const list = grouped.get(notif.agentId) ?? []
-      list.push(notif)
-      grouped.set(notif.agentId, list)
-    }
-    return grouped
-  }
-
-  clearForAgent(agentId: string): void {
-    this.notifications = this.notifications.filter((n) => n.agentId !== agentId)
-    this.lastNotificationTime.delete(agentId)
-    this.updateDockBadge()
   }
 
   clearAll(): void {

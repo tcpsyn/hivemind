@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Terminal } from 'xterm'
+import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { TERMINAL_THEME } from '../../../shared/constants'
 
 export function useTeammateTerminal(
   paneId: string,
@@ -16,14 +17,7 @@ export function useTeammateTerminal(
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
-      theme: {
-        background: '#1a1a2e',
-        foreground: '#e0e0e0',
-        cursor: '#e0e0e0',
-        cursorAccent: '#1a1a2e',
-        selectionBackground: '#2a3a66',
-        selectionForeground: '#e0e0e0'
-      },
+      theme: TERMINAL_THEME,
       allowTransparency: false,
       scrollback: 10000
     })
@@ -55,15 +49,15 @@ export function useTeammateTerminal(
     })
 
     // Handle resize — fit terminal and resize tmux pane to match
+    let lastCols = 0
+    let lastRows = 0
     const resizeObserver = new ResizeObserver(() => {
       try {
         fitAddon.fit()
-        // Sync tmux pane size with terminal dimensions
-        if (term.cols && term.rows) {
-          window.api.sendTeammateInput({
-            paneId: `__resize__${paneId}`,
-            data: JSON.stringify({ cols: term.cols, rows: term.rows })
-          })
+        if (term.cols && term.rows && (term.cols !== lastCols || term.rows !== lastRows)) {
+          lastCols = term.cols
+          lastRows = term.rows
+          window.api.teammateResize?.({ paneId, cols: term.cols, rows: term.rows })
         }
       } catch {
         // ignore resize errors

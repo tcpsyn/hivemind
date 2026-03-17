@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import type { ActiveTab, AgentStatus } from '../../../shared/types'
 import './TopBar.css'
@@ -17,7 +18,14 @@ export default function TopBar() {
     statusCounts.set(agent.status, (statusCounts.get(agent.status) || 0) + 1)
   }
 
-  const unreadCount = state.notifications.filter((n) => !n.read).length
+  const unreadNotifications = state.notifications.filter((n) => !n.read)
+  const unreadCount = unreadNotifications.length
+
+  const dismissAllNotifications = useCallback(() => {
+    for (const n of unreadNotifications) {
+      dispatch({ type: 'DISMISS_NOTIFICATION', payload: n.id })
+    }
+  }, [dispatch, unreadNotifications])
 
   return (
     <div className="topbar" data-testid="topbar">
@@ -54,9 +62,14 @@ export default function TopBar() {
           )}
         </div>
         {unreadCount > 0 && (
-          <span className="notification-badge" data-testid="notification-badge">
+          <button
+            className="notification-badge"
+            data-testid="notification-badge"
+            onClick={dismissAllNotifications}
+            title="Dismiss all notifications"
+          >
             {unreadCount}
-          </span>
+          </button>
         )}
       </div>
     </div>

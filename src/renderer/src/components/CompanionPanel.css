@@ -53,6 +53,29 @@
   border-radius: var(--radius-full);
 }
 
+.companion-collapse-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.companion-collapse-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .companion-dashboard-list {
   flex: 1;
   overflow-y: auto;

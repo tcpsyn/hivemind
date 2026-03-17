@@ -8,7 +8,7 @@ interface KeyboardShortcutOptions {
   onQuickOpen?: () => void
 }
 
-export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
+export function useKeyboardShortcuts({ onQuickOpen }: KeyboardShortcutOptions = {}) {
   const state = useAppState()
   const dispatch = useAppDispatch()
 
@@ -40,7 +40,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
 
       if (mod && e.key === 'p') {
         e.preventDefault()
-        options.onQuickOpen?.()
+        onQuickOpen?.()
         return
       }
 
@@ -84,7 +84,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
       state.editor.activeFileId,
       state.layout.maximizedPaneId,
       state.agents,
-      options
+      onQuickOpen
     ]
   )
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseTmuxArgs } from '../../../main/tmux/TmuxCommandParser'
+import { parseTmuxArgs } from '../../helpers/TmuxCommandParser'
 
 describe('TmuxCommandParser', () => {
   describe('basic command parsing', () => {

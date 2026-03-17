@@ -1,13 +1,10 @@
 import {
   existsSync,
   mkdirSync,
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-  unlinkSync
+  readFileSync
 } from 'node:fs'
 import { join } from 'node:path'
-import { parse, stringify } from 'yaml'
+import { parse } from 'yaml'
 import { teamConfigSchema } from '../../shared/validators'
 import { AGENT_COLORS, AGENT_AVATARS } from '../../shared/constants'
 import type { TeamConfig, AgentConfig } from '../../shared/types'
@@ -22,11 +19,6 @@ export class TeamConfigService {
     }
   }
 
-  listConfigs(): string[] {
-    const files = readdirSync(this.configDir)
-    return (files as unknown as string[]).filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'))
-  }
-
   loadConfig(filename: string): TeamConfig {
     const filePath = join(this.configDir, filename)
     const content = readFileSync(filePath, 'utf-8')
@@ -36,22 +28,6 @@ export class TeamConfigService {
       throw new Error(`Invalid team config: ${result.error.message}`)
     }
     return result.data as TeamConfig
-  }
-
-  saveConfig(config: TeamConfig): void {
-    const result = teamConfigSchema.safeParse(config)
-    if (!result.success) {
-      throw new Error(`Invalid team config: ${result.error.message}`)
-    }
-    const filename = `${config.name}.yml`
-    const filePath = join(this.configDir, filename)
-    const content = stringify(config)
-    writeFileSync(filePath, content, 'utf-8')
-  }
-
-  deleteConfig(filename: string): void {
-    const filePath = join(this.configDir, filename)
-    unlinkSync(filePath)
   }
 
   enrichConfig(config: TeamConfig): TeamConfig {

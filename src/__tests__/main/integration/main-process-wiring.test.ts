@@ -36,13 +36,6 @@ class MockPtyManager extends EventEmitter {
 
   sendInput = vi.fn()
   resize = vi.fn()
-  registerPane = vi.fn()
-  getAgentByPaneId = vi.fn()
-  capturePane = vi.fn().mockReturnValue('')
-  getPaneInfo = vi.fn().mockReturnValue(null)
-  async createTeammatePty(): Promise<AgentState> {
-    return makeAgent()
-  }
   destroyPty = vi.fn((id: string) => {
     this.agents.delete(id)
   })
@@ -217,23 +210,17 @@ describe('Main Process Wiring', () => {
           readFile: vi.fn().mockResolvedValue('content'),
           writeFile: vi.fn().mockResolvedValue(undefined),
           getFileTree: vi.fn().mockResolvedValue([]),
-          detectLanguage: vi.fn().mockReturnValue('typescript')
         } as never,
         gitService: {
           getStatus: vi.fn().mockResolvedValue({ files: [], branch: 'main', ahead: 0, behind: 0 }),
           getDiff: vi.fn().mockResolvedValue('diff'),
-          getFileStatus: vi.fn().mockResolvedValue(null)
         } as never,
         teamConfigService: {
           loadConfig: vi.fn(),
-          saveConfig: vi.fn(),
-          deleteConfig: vi.fn(),
-          listConfigs: vi.fn().mockReturnValue([]),
           enrichConfig: vi.fn((c: TeamConfig) => c)
         } as never
       })
 
-      expect(typeof services.onAgentCreate).toBe('function')
       expect(typeof services.onAgentInput).toBe('function')
       expect(typeof services.onAgentStop).toBe('function')
       expect(typeof services.onAgentRestart).toBe('function')
@@ -242,7 +229,6 @@ describe('Main Process Wiring', () => {
       expect(typeof services.onFileWrite).toBe('function')
       expect(typeof services.onFileTreeRequest).toBe('function')
       expect(typeof services.onGitDiff).toBe('function')
-      expect(typeof services.onGitStatus).toBe('function')
       expect(typeof services.onTeamStart).toBe('function')
       expect(typeof services.onTeamStop).toBe('function')
     })
@@ -256,14 +242,10 @@ describe('Main Process Wiring', () => {
           readFile: vi.fn(),
           writeFile: vi.fn(),
           getFileTree: vi.fn().mockResolvedValue([]),
-          detectLanguage: vi.fn()
         } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
+        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
         teamConfigService: {
           loadConfig: vi.fn(),
-          saveConfig: vi.fn(),
-          deleteConfig: vi.fn(),
-          listConfigs: vi.fn().mockReturnValue([]),
           enrichConfig: vi.fn((c: TeamConfig) => c)
         } as never
       })
@@ -295,14 +277,10 @@ describe('Main Process Wiring', () => {
           readFile: vi.fn(),
           writeFile: vi.fn(),
           getFileTree: vi.fn().mockResolvedValue([]),
-          detectLanguage: vi.fn()
         } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
+        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
         teamConfigService: {
           loadConfig: vi.fn(),
-          saveConfig: vi.fn(),
-          deleteConfig: vi.fn(),
-          listConfigs: vi.fn(),
           enrichConfig: vi.fn((c: TeamConfig) => c)
         } as never
       })
@@ -330,14 +308,10 @@ describe('Main Process Wiring', () => {
           readFile: vi.fn(),
           writeFile: vi.fn(),
           getFileTree: vi.fn().mockResolvedValue([]),
-          detectLanguage: vi.fn()
         } as never,
-        gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
+        gitService: { getStatus: vi.fn(), getDiff: vi.fn() } as never,
         teamConfigService: {
           loadConfig: vi.fn(),
-          saveConfig: vi.fn(),
-          deleteConfig: vi.fn(),
-          listConfigs: vi.fn(),
           enrichConfig: vi.fn((c: TeamConfig) => c)
         } as never
       })

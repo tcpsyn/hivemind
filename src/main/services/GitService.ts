@@ -30,13 +30,6 @@ export class GitService {
     return this.git.diff(args)
   }
 
-  async getFileStatus(filePath: string): Promise<GitFileStatus> {
-    const status = await this.git.status()
-    const file = status.files.find((f) => f.path === filePath)
-    if (!file) return null
-    return this.mapIndexToStatus(file.index, file.working_dir)
-  }
-
   private mapIndexToStatus(index: string, workingDir: string): GitFileStatus {
     if (index === '?' || workingDir === '?') return 'untracked'
     if (index === 'A') return 'added'

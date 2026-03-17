@@ -40,11 +40,6 @@
   flex-shrink: 0;
 }
 
-.pane-avatar {
-  font-size: var(--font-size-md);
-  font-weight: 600;
-}
-
 .pane-name {
   font-weight: 600;
   color: var(--text-primary);

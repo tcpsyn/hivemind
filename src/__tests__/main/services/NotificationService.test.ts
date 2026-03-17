@@ -134,39 +134,9 @@ describe('NotificationService', () => {
       expect(agentIds).toContain('agent-1')
       expect(agentIds).toContain('agent-2')
     })
-
-    it('returns notifications grouped by agent via getNotificationsByAgent', () => {
-      ptyManager.emit('input-needed', 'agent-1')
-      vi.advanceTimersByTime(11_000)
-      ptyManager.emit('input-needed', 'agent-2')
-
-      const grouped = service.getNotificationsByAgent()
-      expect(grouped.has('agent-1')).toBe(true)
-      expect(grouped.has('agent-2')).toBe(true)
-    })
   })
 
   describe('clearing notifications', () => {
-    it('clears notifications for an agent when clearForAgent is called', () => {
-      ptyManager.emit('input-needed', 'agent-1')
-      expect(service.getActiveNotifications().length).toBe(1)
-
-      service.clearForAgent('agent-1')
-      expect(service.getActiveNotifications().length).toBe(0)
-    })
-
-    it('only clears notifications for the specified agent', () => {
-      ptyManager.emit('input-needed', 'agent-1')
-      vi.advanceTimersByTime(11_000)
-      ptyManager.emit('input-needed', 'agent-2')
-      expect(service.getActiveNotifications().length).toBe(2)
-
-      service.clearForAgent('agent-1')
-      const remaining = service.getActiveNotifications()
-      expect(remaining.length).toBe(1)
-      expect(remaining[0].agentId).toBe('agent-2')
-    })
-
     it('clearAll removes all notifications', () => {
       ptyManager.emit('input-needed', 'agent-1')
       vi.advanceTimersByTime(11_000)
@@ -225,14 +195,6 @@ describe('NotificationService', () => {
       expect(mockDock.setBadge).toHaveBeenLastCalledWith('')
     })
 
-    it('updates badge when agent notifications are cleared', () => {
-      ptyManager.emit('input-needed', 'agent-1')
-      vi.advanceTimersByTime(11_000)
-      ptyManager.emit('input-needed', 'agent-2')
-
-      service.clearForAgent('agent-1')
-      expect(mockDock.setBadge).toHaveBeenLastCalledWith('1')
-    })
   })
 
   describe('click handler — focus window', () => {

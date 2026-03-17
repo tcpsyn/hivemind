@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git worktree:*)",
+      "Bash(git branch:*)",
+      "Bash(pnpm test:*)",
+      "Bash(git add:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm build:*)",
+      "Bash(lsof:*)",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__claude_ai_Context7__query-docs",
+      "Bash(git clean:*)",
+      "Bash(cat:*)",
+      "Bash(pnpm test:unit)",
+      "Bash(find /Users/lukemacneil/code/cc_frontend -maxdepth 2 -name vite.config.* -o -name tsconfig.* -o -name vitest.config.*)",
+      "Bash(grep -r \"\\\\.css\\\\|import.*css\" /Users/lukemacneil/code/cc_frontend/src/renderer/src --include=*.tsx --include=*.ts)",
+      "Bash(find /Users/lukemacneil/code/cc_frontend/node_modules/@xterm -name *.css)",
+      "Bash(find /Users/lukemacneil/code/cc_frontend/node_modules -path */xterm* -name *.css)",
+      "Bash(pnpm test:unit -- --run src/__tests__/main/tmux/TeamSession.test.ts)",
+      "Bash(pkill -f \"electron-vite dev\")",
+      "Bash(pkill -f \"electron.*cc_frontend\")",
+      "Bash(git commit:*)",
+      "Bash(gh repo:*)",
+      "Bash(git push:*)",
+      "Bash(rsvg-convert -w 512 -h 512 /Users/lukemacneil/code/cc_frontend/resources/icon.svg -o /Users/lukemacneil/code/cc_frontend/resources/icon.png)",
+      "Bash(tmux display-message:*)"
+    ]
+  }
+}

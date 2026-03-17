@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Terminal } from 'xterm'
+import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { TERMINAL_THEME } from '../../../shared/constants'
 
 export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElement | null>) {
   const termRef = useRef<Terminal | null>(null)
@@ -15,14 +16,7 @@ export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElem
       cursorInactiveStyle: 'none',
       fontSize: 13,
       fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
-      theme: {
-        background: '#1a1a2e',
-        foreground: '#e0e0e0',
-        cursor: '#e0e0e0',
-        cursorAccent: '#1a1a2e',
-        selectionBackground: '#2a3a66',
-        selectionForeground: '#e0e0e0'
-      },
+      theme: TERMINAL_THEME,
       allowTransparency: false,
       scrollback: 10000
     })

@@ -28,7 +28,7 @@ const { mockTerminal, mockFitAddon, mockOnTeammateOutput, mockSendTeammateInput 
   }
 )
 
-vi.mock('xterm', () => ({
+vi.mock('@xterm/xterm', () => ({
   Terminal: function () {
     return mockTerminal
   }

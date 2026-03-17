@@ -4,7 +4,11 @@ import AgentList from './AgentList'
 import FileTree from './FileTree'
 import './Sidebar.css'
 
-export default function Sidebar() {
+interface SidebarProps {
+  onAgentContextMenu?: (agentId: string, action: string) => void
+}
+
+export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
   const state = useAppState()
   const dispatch = useAppDispatch()
   const [agentsCollapsed, setAgentsCollapsed] = useState(false)
@@ -60,7 +64,7 @@ export default function Sidebar() {
           </button>
           {!agentsCollapsed && (
             <div className="sidebar-section-body" data-testid="agents-placeholder">
-              <AgentList />
+              <AgentList onAgentContextMenu={onAgentContextMenu} />
             </div>
           )}
         </div>

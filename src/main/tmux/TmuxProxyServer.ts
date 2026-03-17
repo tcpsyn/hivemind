@@ -59,6 +59,11 @@ export class TmuxProxyServer extends EventEmitter {
   private pollIntervalMs: number
   private pendingNameLookups = new Map<string, ReturnType<typeof setTimeout>>()
   private paneCaptureIntervals = new Map<string, ReturnType<typeof setInterval>>()
+  private consecutiveDiscoverFailures = 0
+  private static readonly MAX_DISCOVER_FAILURES = 3
+  private serverHealthy = true
+  private discovering = false
+  private pendingSendKeys: Array<{ args: string[] }> = []
 
   constructor(
     socketPath: string,
@@ -132,6 +137,10 @@ export class TmuxProxyServer extends EventEmitter {
     this.paneCaptureIntervals.clear()
 
     this.knownPanes.clear()
+    this.pendingSendKeys = []
+    this.consecutiveDiscoverFailures = 0
+    this.serverHealthy = true
+    this.discovering = false
 
     return new Promise((resolve) => {
       if (!this.server) {
@@ -207,19 +216,52 @@ export class TmuxProxyServer extends EventEmitter {
     const agentName = nameMatch[1]
     const target = args[tIdx + 1]
 
-    // Update any known pane that matches the target
+    // Try to match against known panes
+    let matched = false
     for (const [paneId, paneInfo] of this.knownPanes) {
       if (target === paneId || target.includes(paneInfo.sessionName)) {
         paneInfo.windowName = agentName
         this.emit('teammate-renamed', { paneId, name: agentName })
+        matched = true
         break
       }
     }
+
+    // Buffer unmatched notifications — pane may not be discovered yet
+    if (!matched) {
+      this.pendingSendKeys.push({ args: [...args] })
+    }
+  }
+
+  private replayPendingSendKeys(paneId: string, paneInfo: ProxyPaneInfo): void {
+    const remaining: Array<{ args: string[] }> = []
+
+    for (const pending of this.pendingSendKeys) {
+      const tIdx = pending.args.indexOf('-t')
+      if (tIdx === -1 || tIdx + 1 >= pending.args.length) continue
+
+      const target = pending.args[tIdx + 1]
+      const fullArgs = pending.args.join(' ')
+      const nameMatch = fullArgs.match(/--agent-name\s+(\S+)/)
+
+      if (nameMatch && (target === paneId || target.includes(paneInfo.sessionName))) {
+        paneInfo.windowName = nameMatch[1]
+        this.emit('teammate-renamed', { paneId, name: nameMatch[1] })
+      } else {
+        remaining.push(pending)
+      }
+    }
+
+    this.pendingSendKeys = remaining
   }
 
   async discoverPanes(): Promise<void> {
     // If we don't know the session yet, skip discovery (wait for new-session notification)
     if (!this.leadSessionName) return
+
+    // Guard against concurrent execution
+    if (this.discovering) return
+    this.discovering = true
 
     // List panes only from the team's session
     let stdout: string
@@ -233,9 +275,28 @@ export class TmuxProxyServer extends EventEmitter {
         '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
       ]))
       stdout = result.stdout
+      this.consecutiveDiscoverFailures = 0
+      if (!this.serverHealthy) {
+        this.serverHealthy = true
+        this.emit('server-recovered')
+      }
     } catch (err) {
+      this.consecutiveDiscoverFailures++
       this.emit('error', err)
+      if (
+        this.consecutiveDiscoverFailures >= TmuxProxyServer.MAX_DISCOVER_FAILURES &&
+        this.serverHealthy
+      ) {
+        this.serverHealthy = false
+        this.emit('server-error', {
+          failures: this.consecutiveDiscoverFailures,
+          message: `Tmux server unreachable after ${this.consecutiveDiscoverFailures} consecutive failures`
+        })
+      }
+      this.discovering = false
       return
+    } finally {
+      this.discovering = false
     }
 
     const currentPaneIds = new Set<string>()
@@ -264,6 +325,9 @@ export class TmuxProxyServer extends EventEmitter {
         this.knownPanes.set(paneId, paneInfo)
         this.emit('teammate-detected', paneInfo)
 
+        // Replay any buffered send-keys that arrived before this pane was discovered
+        this.replayPendingSendKeys(paneId, paneInfo)
+
         this.startPaneStreaming(paneId).catch(() => {})
         this.startStatusPolling(paneId)
 
@@ -280,6 +344,10 @@ export class TmuxProxyServer extends EventEmitter {
         this.emit('teammate-exited', { paneId })
       }
     }
+  }
+
+  isHealthy(): boolean {
+    return this.serverHealthy
   }
 
   private startStatusPolling(paneId: string): void {
@@ -367,10 +435,10 @@ export class TmuxProxyServer extends EventEmitter {
   async resizePane(paneId: string, cols: number, rows: number): Promise<void> {
     try {
       await this.execCommand(this.realTmuxPath, this.tmuxArgs([
-        'resize-window', '-t', paneId, '-x', String(cols), '-y', String(rows)
+        'resize-pane', '-t', paneId, '-x', String(cols), '-y', String(rows)
       ]))
     } catch {
-      // resize may fail
+      // resize may fail if pane no longer exists
     }
   }
 

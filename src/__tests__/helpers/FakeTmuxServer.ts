@@ -2,7 +2,7 @@ import * as net from 'net'
 import * as fs from 'fs'
 import { EventEmitter } from 'events'
 import type { TmuxRequest, TmuxResponse } from '../../shared/tmux-types'
-import { formatTmuxString, type TmuxVars } from './TmuxResponseFormatter'
+import { formatTmuxString, type TmuxVars } from '../../main/tmux/TmuxResponseFormatter'
 
 interface PaneState {
   paneId: string

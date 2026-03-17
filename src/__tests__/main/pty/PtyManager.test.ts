@@ -226,12 +226,23 @@ describe('PtyManager', () => {
       const handler = vi.fn()
       manager.on('input-needed', handler)
 
-      const patterns = ['❯ ', '$ ', '> ', '? ']
+      const patterns = ['❯', '(y/n)', '[Y/n]', '[y/N]', '(yes/no)']
       for (const pattern of patterns) {
         handler.mockClear()
         pty._dataCallbacks.forEach((cb) => cb(`prompt ${pattern}`))
         expect(handler).toHaveBeenCalledWith(agent.id)
       }
+    })
+
+    it('does not false-positive on patterns in middle of output', async () => {
+      await manager.createPty(testConfig, '/tmp')
+      const pty = await getSpawnedPty()
+      const handler = vi.fn()
+      manager.on('input-needed', handler)
+
+      // Pattern in middle of chunk should not trigger
+      pty._dataCallbacks.forEach((cb) => cb('some output with ❯ in the middle\nmore output'))
+      expect(handler).not.toHaveBeenCalled()
     })
   })
 

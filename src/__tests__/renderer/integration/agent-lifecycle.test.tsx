@@ -18,7 +18,7 @@ const mockFitAddon = vi.hoisted(() => ({
   dispose: vi.fn()
 }))
 
-vi.mock('xterm', () => ({
+vi.mock('@xterm/xterm', () => ({
   Terminal: function () {
     return mockTerminal
   }

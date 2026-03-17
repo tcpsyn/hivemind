@@ -1,5 +1,4 @@
 import type {
-  AgentConfig,
   AgentState,
   AgentStatus,
   FileChangeEvent,
@@ -25,7 +24,6 @@ export const MainToRenderer = {
 
 // Renderer → Main channels (invoke/handle pattern)
 export const RendererToMain = {
-  AGENT_CREATE: 'agent:create',
   AGENT_INPUT: 'agent:input',
   AGENT_STOP: 'agent:stop',
   AGENT_RESTART: 'agent:restart',
@@ -34,10 +32,10 @@ export const RendererToMain = {
   FILE_WRITE: 'file:write',
   FILE_TREE_REQUEST: 'file:tree-request',
   GIT_DIFF: 'git:diff',
-  GIT_STATUS: 'git:status',
   TEAM_START: 'team:start',
   TEAM_STOP: 'team:stop',
-  TEAMMATE_INPUT: 'teammate:input'
+  TEAMMATE_INPUT: 'teammate:input',
+  TEAMMATE_RESIZE: 'teammate:resize'
 } as const
 
 // Payload types for Main → Renderer
@@ -71,16 +69,6 @@ export interface GitStatusUpdatePayload {
 }
 
 // Payload types for Renderer → Main (request/response)
-export interface AgentCreateRequest {
-  config: AgentConfig
-  cwd: string
-}
-
-export interface AgentCreateResponse {
-  agentId: string
-  agent: AgentState
-}
-
 export interface AgentInputRequest {
   agentId: string
   data: string
@@ -129,10 +117,6 @@ export interface GitDiffResponse {
   original?: string
 }
 
-export interface GitStatusRequest {
-  rootPath: string
-}
-
 export interface TeamStartRequest {
   config: TeamConfig
 }
@@ -149,6 +133,12 @@ export interface TeammateOutputPayload {
 export interface TeammateInputRequest {
   paneId: string
   data: string
+}
+
+export interface TeammateResizeRequest {
+  paneId: string
+  cols: number
+  rows: number
 }
 
 export interface TeammateSpawnedPayload {

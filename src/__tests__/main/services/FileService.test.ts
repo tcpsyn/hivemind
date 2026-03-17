@@ -125,30 +125,4 @@ describe('FileService', () => {
     })
   })
 
-  describe('detectLanguage', () => {
-    it('detects TypeScript', () => {
-      expect(service.detectLanguage('file.ts')).toBe('typescript')
-      expect(service.detectLanguage('file.tsx')).toBe('typescript')
-    })
-
-    it('detects JavaScript', () => {
-      expect(service.detectLanguage('file.js')).toBe('javascript')
-      expect(service.detectLanguage('file.jsx')).toBe('javascript')
-    })
-
-    it('detects common languages', () => {
-      expect(service.detectLanguage('file.css')).toBe('css')
-      expect(service.detectLanguage('file.html')).toBe('html')
-      expect(service.detectLanguage('file.json')).toBe('json')
-      expect(service.detectLanguage('file.md')).toBe('markdown')
-      expect(service.detectLanguage('file.py')).toBe('python')
-      expect(service.detectLanguage('file.yml')).toBe('yaml')
-      expect(service.detectLanguage('file.yaml')).toBe('yaml')
-    })
-
-    it('returns plaintext for unknown extensions', () => {
-      expect(service.detectLanguage('file.xyz')).toBe('plaintext')
-      expect(service.detectLanguage('noext')).toBe('plaintext')
-    })
-  })
 })

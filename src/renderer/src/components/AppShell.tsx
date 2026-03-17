@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useLayoutPersistence, createLocalStorage } from '../hooks/useLayoutPersistence'
@@ -20,15 +20,29 @@ export default function AppShell() {
 
   useKeyboardShortcuts()
   useLayoutPersistence(storage)
-  useAgentManager()
+  const { stopAgent, restartAgent } = useAgentManager()
 
   const agents = useMemo(() => Array.from(state.agents.values()), [state.agents])
+
+  const handleAgentContextMenu = useCallback(
+    (agentId: string, action: string) => {
+      switch (action) {
+        case 'stop':
+          stopAgent(agentId)
+          break
+        case 'restart':
+          restartAgent(agentId)
+          break
+      }
+    },
+    [stopAgent, restartAgent]
+  )
 
   return (
     <div className="app-shell">
       <TopBar />
       <ErrorBoundary fallbackLabel="Sidebar error">
-        <Sidebar />
+        <Sidebar onAgentContextMenu={handleAgentContextMenu} />
       </ErrorBoundary>
       <div className="main-content" data-testid="main-content">
         {state.layout.activeTab === 'agents' && (
@@ -51,6 +65,12 @@ export default function AppShell() {
           <ErrorBoundary fallbackLabel="Editor error">
             <EditorView />
           </ErrorBoundary>
+        )}
+        {state.layout.activeTab === 'git' && (
+          <div className="main-empty-state">
+            <span className="main-empty-text">Git integration coming soon</span>
+            <span className="main-empty-hint">Branch, diff, and commit management</span>
+          </div>
         )}
       </div>
       <BottomBar />

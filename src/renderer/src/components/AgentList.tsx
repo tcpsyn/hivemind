@@ -3,7 +3,11 @@ import { useAppState } from '../state/AppContext'
 import AgentListItem from './AgentListItem'
 import './AgentList.css'
 
-export default function AgentList() {
+interface AgentListProps {
+  onAgentContextMenu?: (agentId: string, action: string) => void
+}
+
+export default function AgentList({ onAgentContextMenu }: AgentListProps) {
   const state = useAppState()
 
   const sortedAgents = useMemo(() => {
@@ -20,7 +24,17 @@ export default function AgentList() {
       {sortedAgents.length === 0 ? (
         <div className="agent-list-empty">No agents</div>
       ) : (
-        sortedAgents.map((agent) => <AgentListItem key={agent.id} agent={agent} />)
+        sortedAgents.map((agent) => (
+          <AgentListItem
+            key={agent.id}
+            agent={agent}
+            onContextMenu={
+              onAgentContextMenu
+                ? (action) => onAgentContextMenu(agent.id, action)
+                : undefined
+            }
+          />
+        ))
       )}
     </div>
   )
