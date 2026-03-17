@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, dialog } from 'electron'
+import { app, BrowserWindow, Menu, shell, dialog, nativeImage } from 'electron'
 import { join } from 'path'
 import { readFileSync } from 'fs'
 import { is } from '@electron-toolkit/utils'
@@ -38,6 +38,7 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
     title: 'Hivemind',
+    icon: join(__dirname, '../../resources/icon.png'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -49,6 +50,17 @@ function createWindow(): void {
   mainWindow.on('ready-to-show', () => {
     mainWindow!.show()
   })
+
+  // Set dock icon on macOS
+  if (process.platform === 'darwin') {
+    const iconPath = join(__dirname, '../../resources/icon.png')
+    try {
+      const icon = nativeImage.createFromPath(iconPath)
+      app.dock.setIcon(icon)
+    } catch {
+      // icon may not exist in dev
+    }
+  }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)

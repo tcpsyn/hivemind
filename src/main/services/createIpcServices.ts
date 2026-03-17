@@ -99,6 +99,18 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
 
     onTeammateInput: async (req) => {
       if (!activeSession) throw new Error('No active team session')
+
+      // Handle resize requests (paneId prefixed with __resize__)
+      if (req.paneId.startsWith('__resize__')) {
+        const realPaneId = req.paneId.replace('__resize__', '')
+        const { cols, rows } = JSON.parse(req.data)
+        const server = activeSession.getServer()
+        if (server) {
+          await server.resizePane(realPaneId, cols, rows)
+        }
+        return
+      }
+
       await activeSession.sendTeammateInput(req.paneId, req.data)
     },
 

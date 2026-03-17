@@ -54,10 +54,17 @@ export function useTeammateTerminal(
       window.api.sendTeammateInput({ paneId, data })
     })
 
-    // Handle resize
+    // Handle resize — fit terminal and resize tmux pane to match
     const resizeObserver = new ResizeObserver(() => {
       try {
         fitAddon.fit()
+        // Sync tmux pane size with terminal dimensions
+        if (term.cols && term.rows) {
+          window.api.sendTeammateInput({
+            paneId: `__resize__${paneId}`,
+            data: JSON.stringify({ cols: term.cols, rows: term.rows })
+          })
+        }
       } catch {
         // ignore resize errors
       }

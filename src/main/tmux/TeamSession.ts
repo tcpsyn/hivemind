@@ -73,9 +73,9 @@ export class TeamSession extends EventEmitter {
       '-s',
       this.sessionName,
       '-x',
-      '200',
+      '80',
       '-y',
-      '50'
+      '24'
     ])
 
     // Get the TMUX env var value (socket_path,server_pid,session_idx)

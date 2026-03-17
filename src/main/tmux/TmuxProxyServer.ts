@@ -309,6 +309,16 @@ export class TmuxProxyServer extends EventEmitter {
     this.pendingNameLookups.set(paneId, timeout)
   }
 
+  async resizePane(paneId: string, cols: number, rows: number): Promise<void> {
+    try {
+      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
+        'resize-window', '-t', paneId, '-x', String(cols), '-y', String(rows)
+      ]))
+    } catch {
+      // resize may fail
+    }
+  }
+
   async startPaneStreaming(paneId: string): Promise<void> {
     const safeId = paneId.replace('%', '')
     const outFile = join(tmpdir(), `cc-pane-${safeId}-${Date.now()}.out`)
