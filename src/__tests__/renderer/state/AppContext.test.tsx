@@ -250,10 +250,9 @@ describe('AppContext', () => {
     })
 
     it('dispatch updates state via useAppState', () => {
-      const { result } = renderHook(
-        () => ({ state: useAppState(), dispatch: useAppDispatch() }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => ({ state: useAppState(), dispatch: useAppDispatch() }), {
+        wrapper
+      })
 
       act(() => {
         result.current.dispatch({

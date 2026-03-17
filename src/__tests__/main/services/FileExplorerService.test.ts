@@ -9,9 +9,9 @@ vi.mock('../../../main/services/FileService', () => ({
     writeFile = vi.fn().mockResolvedValue(undefined)
     getFileTree = vi.fn().mockResolvedValue([
       { name: 'src', path: '/project/src', type: 'directory', children: [] },
-      { name: 'index.ts', path: '/project/index.ts', type: 'file' },
+      { name: 'index.ts', path: '/project/index.ts', type: 'file' }
     ])
-  },
+  }
 }))
 
 // Mock FileWatcher as a class extending EventEmitter
@@ -20,7 +20,7 @@ vi.mock('../../../main/services/FileWatcher', () => ({
     start = vi.fn()
     stop = vi.fn().mockResolvedValue(undefined)
     isWatching = vi.fn().mockReturnValue(false)
-  },
+  }
 }))
 
 // Mock GitService as a class
@@ -30,22 +30,22 @@ vi.mock('../../../main/services/GitService', () => ({
       branch: 'main',
       ahead: 0,
       behind: 0,
-      files: [{ path: '/project/index.ts', status: 'modified' }],
+      files: [{ path: '/project/index.ts', status: 'modified' }]
     })
     getDiff = vi.fn().mockResolvedValue('diff content')
     getFileStatus = vi.fn().mockResolvedValue('modified')
-  },
+  }
 }))
 
 vi.mock('../../../main/ipc/handlers', () => ({
   sendFileChanged: vi.fn(),
   sendFileTreeUpdate: vi.fn(),
-  sendGitStatusUpdate: vi.fn(),
+  sendGitStatusUpdate: vi.fn()
 }))
 
 const mockWindow = {
   isDestroyed: vi.fn().mockReturnValue(false),
-  webContents: { send: vi.fn() },
+  webContents: { send: vi.fn() }
 } as unknown as Electron.BrowserWindow
 
 describe('FileExplorerService', () => {

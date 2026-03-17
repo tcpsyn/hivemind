@@ -38,7 +38,7 @@ export function useFileTree() {
   }, [loadTree])
 
   const toggleDir = useCallback((path: string) => {
-    setExpandedDirs(prev => {
+    setExpandedDirs((prev) => {
       const next = new Set(prev)
       if (next.has(path)) {
         next.delete(path)
@@ -49,10 +49,7 @@ export function useFileTree() {
     })
   }, [])
 
-  const isExpanded = useCallback(
-    (path: string) => expandedDirs.has(path),
-    [expandedDirs]
-  )
+  const isExpanded = useCallback((path: string) => expandedDirs.has(path), [expandedDirs])
 
   return { tree, loading, toggleDir, isExpanded }
 }

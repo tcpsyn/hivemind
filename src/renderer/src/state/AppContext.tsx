@@ -90,7 +90,7 @@ export function appReducer(state: ExtendedAppState, action: AppAction): Extended
       }
 
     case 'ADD_EDITOR_TAB': {
-      const exists = state.editor.openFiles.some(f => f.id === action.payload.id)
+      const exists = state.editor.openFiles.some((f) => f.id === action.payload.id)
       if (exists) {
         return { ...state, editor: { ...state.editor, activeFileId: action.payload.id } }
       }
@@ -104,7 +104,7 @@ export function appReducer(state: ExtendedAppState, action: AppAction): Extended
     }
 
     case 'CLOSE_EDITOR_TAB': {
-      const openFiles = state.editor.openFiles.filter(f => f.id !== action.payload)
+      const openFiles = state.editor.openFiles.filter((f) => f.id !== action.payload)
       const activeFileId =
         state.editor.activeFileId === action.payload
           ? openFiles.length > 0
@@ -123,7 +123,7 @@ export function appReducer(state: ExtendedAppState, action: AppAction): Extended
     case 'DISMISS_NOTIFICATION':
       return {
         ...state,
-        notifications: state.notifications.map(n =>
+        notifications: state.notifications.map((n) =>
           n.id === action.payload ? { ...n, read: true } : n
         )
       }

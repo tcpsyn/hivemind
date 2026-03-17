@@ -25,7 +25,9 @@
   border-right: 1px solid var(--border-primary);
   white-space: nowrap;
   user-select: none;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .editor-tab:hover {
@@ -65,7 +67,9 @@
   border-radius: var(--radius-sm);
   padding: 0;
   line-height: 1;
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .editor-tab-close:hover {

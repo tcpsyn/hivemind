@@ -17,7 +17,7 @@ export default function TopBar() {
     statusCounts.set(agent.status, (statusCounts.get(agent.status) || 0) + 1)
   }
 
-  const unreadCount = state.notifications.filter(n => !n.read).length
+  const unreadCount = state.notifications.filter((n) => !n.read).length
 
   return (
     <div className="topbar" data-testid="topbar">
@@ -27,7 +27,7 @@ export default function TopBar() {
       </div>
 
       <div className="topbar-center">
-        {TABS.map(tab => (
+        {TABS.map((tab) => (
           <button
             key={tab.value}
             className={`topbar-tab${state.layout.activeTab === tab.value ? ' active' : ''}`}

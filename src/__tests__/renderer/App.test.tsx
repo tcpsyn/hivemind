@@ -22,10 +22,10 @@ beforeEach(() => {
       onAgentStatusChange: vi.fn(() => vi.fn()),
       onAgentInputNeeded: vi.fn(() => vi.fn()),
       onFileTreeUpdate: vi.fn(() => vi.fn()),
-      onGitStatusUpdate: vi.fn(() => vi.fn()),
+      onGitStatusUpdate: vi.fn(() => vi.fn())
     },
     writable: true,
-    configurable: true,
+    configurable: true
   })
 })
 

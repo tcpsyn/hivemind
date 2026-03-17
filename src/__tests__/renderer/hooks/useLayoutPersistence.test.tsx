@@ -171,7 +171,9 @@ describe('useLayoutPersistence', () => {
       const store: Record<string, string> = {}
       const mockLS = {
         getItem: vi.fn((k: string) => store[k] ?? null),
-        setItem: vi.fn((k: string, v: string) => { store[k] = v }),
+        setItem: vi.fn((k: string, v: string) => {
+          store[k] = v
+        }),
         removeItem: vi.fn(),
         clear: vi.fn(),
         key: vi.fn(),

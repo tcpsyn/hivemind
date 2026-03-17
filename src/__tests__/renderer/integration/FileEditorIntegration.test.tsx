@@ -14,15 +14,15 @@ vi.mock('monaco-editor', () => ({
       onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
       setValue: vi.fn(),
       getValue: vi.fn(() => 'file content'),
-      updateOptions: vi.fn(),
+      updateOptions: vi.fn()
     })),
     createDiffEditor: vi.fn(() => ({
       dispose: vi.fn(),
-      setModel: vi.fn(),
+      setModel: vi.fn()
     })),
     createModel: vi.fn(() => ({})),
-    setTheme: vi.fn(),
-  },
+    setTheme: vi.fn()
+  }
 }))
 
 const mockTree: FileTreeNode[] = [
@@ -30,14 +30,14 @@ const mockTree: FileTreeNode[] = [
     name: 'App.tsx',
     path: '/project/src/App.tsx',
     type: 'file',
-    gitStatus: 'modified',
+    gitStatus: 'modified'
   },
   {
     name: 'utils.ts',
     path: '/project/src/utils.ts',
     type: 'file',
-    gitStatus: null,
-  },
+    gitStatus: null
+  }
 ]
 
 const mockFileTreeRequest = vi.fn<() => Promise<FileTreeNode[]>>()
@@ -73,10 +73,10 @@ beforeEach(() => {
       onAgentStatusChange: vi.fn(() => vi.fn()),
       onAgentInputNeeded: vi.fn(() => vi.fn()),
       onFileTreeUpdate: vi.fn(() => vi.fn()),
-      onGitStatusUpdate: vi.fn(() => vi.fn()),
+      onGitStatusUpdate: vi.fn(() => vi.fn())
     },
     writable: true,
-    configurable: true,
+    configurable: true
   })
 })
 
@@ -131,9 +131,7 @@ describe('File Explorer ↔ Editor Integration', () => {
   it('git status is displayed in file tree', async () => {
     renderIntegration()
 
-    const appItem = (await screen.findByText('App.tsx')).closest(
-      '[data-testid="file-tree-item"]'
-    )!
+    const appItem = (await screen.findByText('App.tsx')).closest('[data-testid="file-tree-item"]')!
     expect(appItem.querySelector('.git-status-modified')).toBeInTheDocument()
   })
 
@@ -151,7 +149,7 @@ describe('File Explorer ↔ Editor Integration', () => {
 
     const updatedTree: FileTreeNode[] = [
       ...mockTree,
-      { name: 'new.ts', path: '/project/src/new.ts', type: 'file', gitStatus: 'added' },
+      { name: 'new.ts', path: '/project/src/new.ts', type: 'file', gitStatus: 'added' }
     ]
     mockFileTreeRequest.mockResolvedValue(updatedTree)
 

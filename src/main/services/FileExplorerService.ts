@@ -116,8 +116,7 @@ export class FileExplorerService {
   ): FileTreeNode[] {
     return nodes.map((node) => {
       const gitStatus = statusMap.get(node.path) ?? null
-      const children =
-        node.children ? this.applyGitStatus(node.children, statusMap) : undefined
+      const children = node.children ? this.applyGitStatus(node.children, statusMap) : undefined
       return { ...node, gitStatus: gitStatus ?? node.gitStatus, children }
     })
   }

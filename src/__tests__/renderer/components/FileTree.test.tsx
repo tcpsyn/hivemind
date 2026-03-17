@@ -34,10 +34,10 @@ beforeEach(() => {
       onAgentStatusChange: vi.fn(() => vi.fn()),
       onAgentInputNeeded: vi.fn(() => vi.fn()),
       onFileTreeUpdate: vi.fn(() => vi.fn()),
-      onGitStatusUpdate: vi.fn(() => vi.fn()),
+      onGitStatusUpdate: vi.fn(() => vi.fn())
     },
     writable: true,
-    configurable: true,
+    configurable: true
   })
 })
 
@@ -45,7 +45,9 @@ function wrapper({ children }: { children: ReactNode }) {
   return <AppProvider>{children}</AppProvider>
 }
 
-function renderFileTree(props?: { onFileClick?: (f: { filePath: string; fileName: string }) => void }) {
+function renderFileTree(props?: {
+  onFileClick?: (f: { filePath: string; fileName: string }) => void
+}) {
   return render(<FileTree {...props} />, { wrapper })
 }
 
@@ -59,13 +61,13 @@ const mockTree: FileTreeNode[] = [
         name: 'index.ts',
         path: '/project/src/index.ts',
         type: 'file',
-        gitStatus: 'modified',
+        gitStatus: 'modified'
       },
       {
         name: 'utils.ts',
         path: '/project/src/utils.ts',
         type: 'file',
-        gitStatus: 'added',
+        gitStatus: 'added'
       },
       {
         name: 'components',
@@ -76,30 +78,30 @@ const mockTree: FileTreeNode[] = [
             name: 'App.tsx',
             path: '/project/src/components/App.tsx',
             type: 'file',
-            gitStatus: null,
-          },
-        ],
-      },
-    ],
+            gitStatus: null
+          }
+        ]
+      }
+    ]
   },
   {
     name: 'package.json',
     path: '/project/package.json',
     type: 'file',
-    gitStatus: null,
+    gitStatus: null
   },
   {
     name: 'README.md',
     path: '/project/README.md',
     type: 'file',
-    gitStatus: 'deleted',
+    gitStatus: 'deleted'
   },
   {
     name: '.gitignore',
     path: '/project/.gitignore',
     type: 'file',
-    gitStatus: 'untracked',
-  },
+    gitStatus: 'untracked'
+  }
 ]
 
 describe('FileTree', () => {
@@ -166,7 +168,9 @@ describe('FileTree', () => {
     mockFileTreeRequest.mockResolvedValue(mockTree)
     renderFileTree()
     await user.click(await screen.findByText('src'))
-    const indexItem = (await screen.findByText('index.ts')).closest('[data-testid="file-tree-item"]')!
+    const indexItem = (await screen.findByText('index.ts')).closest(
+      '[data-testid="file-tree-item"]'
+    )!
     const statusBadge = within(indexItem as HTMLElement).getByText('M')
     expect(statusBadge).toBeInTheDocument()
     expect(statusBadge).toHaveClass('git-status-modified')
@@ -177,7 +181,9 @@ describe('FileTree', () => {
     mockFileTreeRequest.mockResolvedValue(mockTree)
     renderFileTree()
     await user.click(await screen.findByText('src'))
-    const utilsItem = (await screen.findByText('utils.ts')).closest('[data-testid="file-tree-item"]')!
+    const utilsItem = (await screen.findByText('utils.ts')).closest(
+      '[data-testid="file-tree-item"]'
+    )!
     const statusBadge = within(utilsItem as HTMLElement).getByText('A')
     expect(statusBadge).toBeInTheDocument()
     expect(statusBadge).toHaveClass('git-status-added')
@@ -186,7 +192,9 @@ describe('FileTree', () => {
   it('shows git status D indicator for deleted files', async () => {
     mockFileTreeRequest.mockResolvedValue(mockTree)
     renderFileTree()
-    const readmeItem = (await screen.findByText('README.md')).closest('[data-testid="file-tree-item"]')!
+    const readmeItem = (await screen.findByText('README.md')).closest(
+      '[data-testid="file-tree-item"]'
+    )!
     const statusBadge = within(readmeItem as HTMLElement).getByText('D')
     expect(statusBadge).toBeInTheDocument()
     expect(statusBadge).toHaveClass('git-status-deleted')
@@ -195,7 +203,9 @@ describe('FileTree', () => {
   it('shows git status ? indicator for untracked files', async () => {
     mockFileTreeRequest.mockResolvedValue(mockTree)
     renderFileTree()
-    const gitignoreItem = (await screen.findByText('.gitignore')).closest('[data-testid="file-tree-item"]')!
+    const gitignoreItem = (await screen.findByText('.gitignore')).closest(
+      '[data-testid="file-tree-item"]'
+    )!
     const statusBadge = within(gitignoreItem as HTMLElement).getByText('?')
     expect(statusBadge).toBeInTheDocument()
     expect(statusBadge).toHaveClass('git-status-untracked')
@@ -204,7 +214,9 @@ describe('FileTree', () => {
   it('does not show git status for files with null status', async () => {
     mockFileTreeRequest.mockResolvedValue(mockTree)
     renderFileTree()
-    const pkgItem = (await screen.findByText('package.json')).closest('[data-testid="file-tree-item"]')!
+    const pkgItem = (await screen.findByText('package.json')).closest(
+      '[data-testid="file-tree-item"]'
+    )!
     expect(within(pkgItem as HTMLElement).queryByTestId('git-status')).not.toBeInTheDocument()
   })
 
@@ -218,7 +230,7 @@ describe('FileTree', () => {
     await user.click(await screen.findByText('package.json'))
     expect(onFileClick).toHaveBeenCalledWith({
       filePath: '/project/package.json',
-      fileName: 'package.json',
+      fileName: 'package.json'
     })
   })
 
@@ -248,7 +260,7 @@ describe('FileTree', () => {
     await screen.findByText('src')
 
     const updatedTree: FileTreeNode[] = [
-      { name: 'new-file.ts', path: '/project/new-file.ts', type: 'file', gitStatus: 'added' },
+      { name: 'new-file.ts', path: '/project/new-file.ts', type: 'file', gitStatus: 'added' }
     ]
     mockFileTreeRequest.mockResolvedValue(updatedTree)
 

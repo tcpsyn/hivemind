@@ -71,11 +71,38 @@ describe('TopBar', () => {
     const Wrapper = () => {
       const dispatch = useAppDispatch()
       const agents: AgentState[] = [
-        { id: '1', name: 'a', role: 'r', avatar: 'robot-1', color: '#FF6B6B', status: 'running', needsInput: false, lastActivity: Date.now() },
-        { id: '2', name: 'b', role: 'r', avatar: 'robot-2', color: '#4ECDC4', status: 'running', needsInput: false, lastActivity: Date.now() },
-        { id: '3', name: 'c', role: 'r', avatar: 'robot-3', color: '#45B7D1', status: 'waiting', needsInput: true, lastActivity: Date.now() }
+        {
+          id: '1',
+          name: 'a',
+          role: 'r',
+          avatar: 'robot-1',
+          color: '#FF6B6B',
+          status: 'running',
+          needsInput: false,
+          lastActivity: Date.now()
+        },
+        {
+          id: '2',
+          name: 'b',
+          role: 'r',
+          avatar: 'robot-2',
+          color: '#4ECDC4',
+          status: 'running',
+          needsInput: false,
+          lastActivity: Date.now()
+        },
+        {
+          id: '3',
+          name: 'c',
+          role: 'r',
+          avatar: 'robot-3',
+          color: '#45B7D1',
+          status: 'waiting',
+          needsInput: true,
+          lastActivity: Date.now()
+        }
       ]
-      agents.forEach(a => dispatch({ type: 'ADD_AGENT', payload: a }))
+      agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a }))
       return <TopBar />
     }
     render(
@@ -90,9 +117,30 @@ describe('TopBar', () => {
   it('shows unread notification badge count', () => {
     const Wrapper = () => {
       const dispatch = useAppDispatch()
-      const notif1: AppNotification = { id: 'n1', agentId: '1', agentName: 'a', message: 'test', timestamp: Date.now(), read: false }
-      const notif2: AppNotification = { id: 'n2', agentId: '2', agentName: 'b', message: 'test', timestamp: Date.now(), read: false }
-      const notif3: AppNotification = { id: 'n3', agentId: '3', agentName: 'c', message: 'test', timestamp: Date.now(), read: true }
+      const notif1: AppNotification = {
+        id: 'n1',
+        agentId: '1',
+        agentName: 'a',
+        message: 'test',
+        timestamp: Date.now(),
+        read: false
+      }
+      const notif2: AppNotification = {
+        id: 'n2',
+        agentId: '2',
+        agentName: 'b',
+        message: 'test',
+        timestamp: Date.now(),
+        read: false
+      }
+      const notif3: AppNotification = {
+        id: 'n3',
+        agentId: '3',
+        agentName: 'c',
+        message: 'test',
+        timestamp: Date.now(),
+        read: true
+      }
       dispatch({ type: 'ADD_NOTIFICATION', payload: notif1 })
       dispatch({ type: 'ADD_NOTIFICATION', payload: notif2 })
       dispatch({ type: 'ADD_NOTIFICATION', payload: notif3 })

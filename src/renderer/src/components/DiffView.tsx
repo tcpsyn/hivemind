@@ -28,20 +28,16 @@ export default function DiffView({ filePath, language }: DiffViewProps) {
 
     editorRef.current = diffEditor
 
-    Promise.all([
-      window.api.gitDiff({ filePath }),
-      window.api.fileRead({ filePath })
-    ]).then(([diffRes, fileRes]) => {
-      if (!editorRef.current) return
+    Promise.all([window.api.gitDiff({ filePath }), window.api.fileRead({ filePath })]).then(
+      ([diffRes, fileRes]) => {
+        if (!editorRef.current) return
 
-      const originalModel = monaco.editor.createModel(
-        diffRes.original ?? '',
-        language
-      )
-      const modifiedModel = monaco.editor.createModel(fileRes.content, language)
+        const originalModel = monaco.editor.createModel(diffRes.original ?? '', language)
+        const modifiedModel = monaco.editor.createModel(fileRes.content, language)
 
-      editorRef.current.setModel({ original: originalModel, modified: modifiedModel })
-    })
+        editorRef.current.setModel({ original: originalModel, modified: modifiedModel })
+      }
+    )
 
     return () => {
       diffEditor.dispose()
@@ -59,11 +55,7 @@ export default function DiffView({ filePath, language }: DiffViewProps) {
   return (
     <div className="diff-view" data-testid="diff-view-container">
       <div className="diff-view-toolbar">
-        <button
-          className="diff-toggle-btn"
-          data-testid="diff-toggle-mode"
-          onClick={handleToggle}
-        >
+        <button className="diff-toggle-btn" data-testid="diff-toggle-mode" onClick={handleToggle}>
           {sideBySide ? 'Inline' : 'Side by Side'}
         </button>
       </div>

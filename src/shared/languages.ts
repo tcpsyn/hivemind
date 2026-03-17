@@ -26,7 +26,7 @@ const EXTENSION_LANGUAGE_MAP: Record<string, string> = {
   '.graphql': 'graphql',
   '.gql': 'graphql',
   '.vue': 'vue',
-  '.svelte': 'svelte',
+  '.svelte': 'svelte'
 }
 
 export function detectLanguage(filePath: string): string {

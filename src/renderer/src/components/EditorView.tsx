@@ -38,8 +38,8 @@ export default function EditorView() {
             </div>
           </div>
           <div className="editor-view-content">
-            {activeTab && (
-              showDiff ? (
+            {activeTab &&
+              (showDiff ? (
                 <DiffView filePath={activeTab.filePath} language={activeTab.language} />
               ) : (
                 <MonacoEditor
@@ -48,8 +48,7 @@ export default function EditorView() {
                   isReadOnly={editor.isReadOnly}
                   onContentChange={editor.setContent}
                 />
-              )
-            )}
+              ))}
           </div>
         </>
       ) : (

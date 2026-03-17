@@ -19,7 +19,10 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   }
 }
 
-function renderItem(agent: AgentState, props: { onClick?: () => void; onContextMenu?: (action: string) => void } = {}) {
+function renderItem(
+  agent: AgentState,
+  props: { onClick?: () => void; onContextMenu?: (action: string) => void } = {}
+) {
   return render(
     <AppProvider>
       <AgentListItem agent={agent} {...props} />

@@ -169,11 +169,38 @@ describe('useKeyboardShortcuts', () => {
       )
 
       const agents: AgentState[] = [
-        { id: 'a1', name: 'arch', role: 'r', avatar: 'robot-1', color: '#FF6B6B', status: 'running', needsInput: false, lastActivity: Date.now() },
-        { id: 'a2', name: 'front', role: 'r', avatar: 'robot-2', color: '#4ECDC4', status: 'running', needsInput: false, lastActivity: Date.now() },
-        { id: 'a3', name: 'back', role: 'r', avatar: 'robot-3', color: '#45B7D1', status: 'running', needsInput: false, lastActivity: Date.now() }
+        {
+          id: 'a1',
+          name: 'arch',
+          role: 'r',
+          avatar: 'robot-1',
+          color: '#FF6B6B',
+          status: 'running',
+          needsInput: false,
+          lastActivity: Date.now()
+        },
+        {
+          id: 'a2',
+          name: 'front',
+          role: 'r',
+          avatar: 'robot-2',
+          color: '#4ECDC4',
+          status: 'running',
+          needsInput: false,
+          lastActivity: Date.now()
+        },
+        {
+          id: 'a3',
+          name: 'back',
+          role: 'r',
+          avatar: 'robot-3',
+          color: '#45B7D1',
+          status: 'running',
+          needsInput: false,
+          lastActivity: Date.now()
+        }
       ]
-      act(() => agents.forEach(a => result.current.dispatch({ type: 'ADD_AGENT', payload: a })))
+      act(() => agents.forEach((a) => result.current.dispatch({ type: 'ADD_AGENT', payload: a })))
 
       act(() => fireKey('2', { metaKey: true }))
       expect(result.current.state.layout.maximizedPaneId).toBe('a2')
@@ -191,7 +218,16 @@ describe('useKeyboardShortcuts', () => {
       act(() =>
         result.current.dispatch({
           type: 'ADD_AGENT',
-          payload: { id: 'a1', name: 'arch', role: 'r', avatar: 'robot-1', color: '#FF6B6B', status: 'running', needsInput: false, lastActivity: Date.now() }
+          payload: {
+            id: 'a1',
+            name: 'arch',
+            role: 'r',
+            avatar: 'robot-1',
+            color: '#FF6B6B',
+            status: 'running',
+            needsInput: false,
+            lastActivity: Date.now()
+          }
         })
       )
 

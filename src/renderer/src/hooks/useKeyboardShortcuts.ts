@@ -62,7 +62,14 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
         return
       }
     },
-    [dispatch, state.layout.activeTab, state.editor.activeFileId, state.layout.maximizedPaneId, state.agents, options]
+    [
+      dispatch,
+      state.layout.activeTab,
+      state.editor.activeFileId,
+      state.layout.maximizedPaneId,
+      state.agents,
+      options
+    ]
   )
 
   useEffect(() => {

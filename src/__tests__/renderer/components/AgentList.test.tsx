@@ -20,7 +20,7 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
 
 function SetupAgents({ agents, children }: { agents: AgentState[]; children: React.ReactNode }) {
   const dispatch = useAppDispatch()
-  agents.forEach(a => dispatch({ type: 'ADD_AGENT', payload: a }))
+  agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a }))
   return <>{children}</>
 }
 

@@ -209,9 +209,7 @@ describe('FileWatcher', () => {
       mockWatcherInstance.emit('change', '/tmp/project/file.ts')
 
       vi.advanceTimersByTime(150)
-      expect(handler).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'change' })
-      )
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ type: 'change' }))
     })
   })
 

@@ -24,12 +24,22 @@ describe('AgentAvatar', () => {
 
   it('renders distinct SVGs for all 12 avatar types', () => {
     const avatars = [
-      'robot-1', 'robot-2', 'robot-3', 'circuit', 'diamond', 'hexagon',
-      'star', 'shield', 'bolt', 'gear', 'cube', 'prism'
+      'robot-1',
+      'robot-2',
+      'robot-3',
+      'circuit',
+      'diamond',
+      'hexagon',
+      'star',
+      'shield',
+      'bolt',
+      'gear',
+      'cube',
+      'prism'
     ]
     const svgContents = new Set<string>()
 
-    avatars.forEach(avatar => {
+    avatars.forEach((avatar) => {
       const { container } = render(<AgentAvatar avatar={avatar} color="#FF6B6B" />)
       const svg = container.querySelector('svg')!
       svgContents.add(svg.innerHTML)

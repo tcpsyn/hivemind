@@ -117,10 +117,7 @@ describe('Main Process Wiring', () => {
     it('forwards input-needed events to renderer as agent:input-needed', async () => {
       const { sendAgentInputNeeded } = await import('../../../main/ipc/handlers')
 
-      await ptyManager.createPty(
-        { name: 'architect', role: 'Lead', command: 'claude' },
-        '/tmp'
-      )
+      await ptyManager.createPty({ name: 'architect', role: 'Lead', command: 'claude' }, '/tmp')
 
       ptyManager.on('input-needed', (agentId: string) => {
         const agents = ptyManager.getAll()
@@ -185,10 +182,7 @@ describe('Main Process Wiring', () => {
     })
 
     it('team:stop destroys all PTYs', async () => {
-      await ptyManager.createPty(
-        { name: 'architect', role: 'Lead', command: 'claude' },
-        '/tmp'
-      )
+      await ptyManager.createPty({ name: 'architect', role: 'Lead', command: 'claude' }, '/tmp')
       expect(ptyManager.getAll().size).toBe(1)
 
       ptyManager.destroyAll()
@@ -251,16 +245,31 @@ describe('Main Process Wiring', () => {
 
       const services = createIpcServices({
         ptyManager: ptyManager as never,
-        fileService: { readFile: vi.fn(), writeFile: vi.fn(), getFileTree: vi.fn().mockResolvedValue([]), detectLanguage: vi.fn() } as never,
+        fileService: {
+          readFile: vi.fn(),
+          writeFile: vi.fn(),
+          getFileTree: vi.fn().mockResolvedValue([]),
+          detectLanguage: vi.fn()
+        } as never,
         gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
-        teamConfigService: { loadConfig: vi.fn(), saveConfig: vi.fn(), deleteConfig: vi.fn(), listConfigs: vi.fn().mockReturnValue([]), enrichConfig: vi.fn((c: TeamConfig) => c) } as never
+        teamConfigService: {
+          loadConfig: vi.fn(),
+          saveConfig: vi.fn(),
+          deleteConfig: vi.fn(),
+          listConfigs: vi.fn().mockReturnValue([]),
+          enrichConfig: vi.fn((c: TeamConfig) => c)
+        } as never
       })
 
       const result = await services.onTeamStart({
-        config: { name: 'test', project: '/tmp', agents: [
-          { name: 'arch', role: 'Lead', command: 'claude' },
-          { name: 'code', role: 'Impl', command: 'claude' }
-        ]}
+        config: {
+          name: 'test',
+          project: '/tmp',
+          agents: [
+            { name: 'arch', role: 'Lead', command: 'claude' },
+            { name: 'code', role: 'Impl', command: 'claude' }
+          ]
+        }
       })
       expect(result.agents).toHaveLength(2)
       expect(result.agents[0].name).toBe('arch')
@@ -272,9 +281,20 @@ describe('Main Process Wiring', () => {
 
       const services = createIpcServices({
         ptyManager: ptyManager as never,
-        fileService: { readFile: vi.fn(), writeFile: vi.fn(), getFileTree: vi.fn().mockResolvedValue([]), detectLanguage: vi.fn() } as never,
+        fileService: {
+          readFile: vi.fn(),
+          writeFile: vi.fn(),
+          getFileTree: vi.fn().mockResolvedValue([]),
+          detectLanguage: vi.fn()
+        } as never,
         gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
-        teamConfigService: { loadConfig: vi.fn(), saveConfig: vi.fn(), deleteConfig: vi.fn(), listConfigs: vi.fn(), enrichConfig: vi.fn((c: TeamConfig) => c) } as never
+        teamConfigService: {
+          loadConfig: vi.fn(),
+          saveConfig: vi.fn(),
+          deleteConfig: vi.fn(),
+          listConfigs: vi.fn(),
+          enrichConfig: vi.fn((c: TeamConfig) => c)
+        } as never
       })
 
       await services.onTeamStop()
@@ -286,9 +306,20 @@ describe('Main Process Wiring', () => {
 
       const services = createIpcServices({
         ptyManager: ptyManager as never,
-        fileService: { readFile: vi.fn(), writeFile: vi.fn(), getFileTree: vi.fn().mockResolvedValue([]), detectLanguage: vi.fn() } as never,
+        fileService: {
+          readFile: vi.fn(),
+          writeFile: vi.fn(),
+          getFileTree: vi.fn().mockResolvedValue([]),
+          detectLanguage: vi.fn()
+        } as never,
         gitService: { getStatus: vi.fn(), getDiff: vi.fn(), getFileStatus: vi.fn() } as never,
-        teamConfigService: { loadConfig: vi.fn(), saveConfig: vi.fn(), deleteConfig: vi.fn(), listConfigs: vi.fn(), enrichConfig: vi.fn((c: TeamConfig) => c) } as never
+        teamConfigService: {
+          loadConfig: vi.fn(),
+          saveConfig: vi.fn(),
+          deleteConfig: vi.fn(),
+          listConfigs: vi.fn(),
+          enrichConfig: vi.fn((c: TeamConfig) => c)
+        } as never
       })
 
       await services.onAgentInput({ agentId: 'agent-1', data: 'yes\n' })

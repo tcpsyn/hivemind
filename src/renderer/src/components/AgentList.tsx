@@ -20,9 +20,7 @@ export default function AgentList() {
       {sortedAgents.length === 0 ? (
         <div className="agent-list-empty">No agents</div>
       ) : (
-        sortedAgents.map(agent => (
-          <AgentListItem key={agent.id} agent={agent} />
-        ))
+        sortedAgents.map((agent) => <AgentListItem key={agent.id} agent={agent} />)
       )}
     </div>
   )
