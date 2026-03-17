@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { useLayoutPersistence, createLocalStorage } from '../hooks/useLayoutPersistence'
+import { useAgentManager } from '../hooks/useAgentManager'
 import TopBar from './TopBar'
 import Sidebar from './Sidebar'
 import BottomBar from './BottomBar'
+import { PaneGrid } from './PaneGrid'
 import './AppShell.css'
 
 const storage = createLocalStorage()
@@ -14,13 +17,18 @@ export default function AppShell() {
 
   useKeyboardShortcuts()
   useLayoutPersistence(storage)
+  useAgentManager()
+
+  const agents = useMemo(() => Array.from(state.agents.values()), [state.agents])
 
   return (
     <div className="app-shell">
       <TopBar />
       <Sidebar />
       <div className="main-content" data-testid="main-content">
-        {/* Main content area — agent grid, editor, git view */}
+        {state.layout.activeTab === 'agents' && agents.length > 0 && (
+          <PaneGrid agents={agents} />
+        )}
       </div>
       <BottomBar />
       <button
