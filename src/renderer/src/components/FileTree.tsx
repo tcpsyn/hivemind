@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useAppDispatch } from '../state/AppContext'
 import { useFileTree } from '../hooks/useFileTree'
 import FileTreeItem from './FileTreeItem'
+import { detectLanguage } from '../../../shared/languages'
 import type { FileTreeNode } from '../../../shared/types'
 import './FileTree.css'
 
@@ -47,6 +48,7 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
         id: node.path,
         filePath: node.path,
         fileName: node.name,
+        language: detectLanguage(node.name),
         isModified: false,
         isReadOnly: true,
       }
