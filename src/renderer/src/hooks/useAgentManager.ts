@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useAppDispatch, useAppState } from '../state/AppContext'
-import type { TeamConfig } from '../../../shared/types'
+import type { AgentState, TeamConfig } from '../../../shared/types'
 
 export function useAgentManager() {
   const dispatch = useAppDispatch()
@@ -8,6 +8,28 @@ export function useAgentManager() {
   const [isTeamRunning, setIsTeamRunning] = useState(false)
   const agentIdsRef = useRef<Set<string>>(new Set())
   const teamLeadSetRef = useRef(false)
+
+  // Listen for auto-started team session from main process
+  useEffect(() => {
+    const unsubAutoStart = window.api?.onTeamAutoStarted?.((data: { projectName: string; projectPath: string; agents: AgentState[] }) => {
+      dispatch({ type: 'SET_PROJECT', payload: { name: data.projectName, path: data.projectPath } })
+      for (const agent of data.agents) {
+        agentIdsRef.current.add(agent.id)
+        dispatch({ type: 'ADD_AGENT', payload: agent })
+        if (!teamLeadSetRef.current && !agent.isTeammate) {
+          dispatch({ type: 'SET_TEAM_LEAD', payload: agent.id })
+          teamLeadSetRef.current = true
+        }
+      }
+      if (!teamLeadSetRef.current && data.agents.length > 0) {
+        dispatch({ type: 'SET_TEAM_LEAD', payload: data.agents[0].id })
+        teamLeadSetRef.current = true
+      }
+      setIsTeamRunning(true)
+    })
+
+    return () => { unsubAutoStart?.() }
+  }, [dispatch])
 
   // Listen for menu team start/stop
   useEffect(() => {

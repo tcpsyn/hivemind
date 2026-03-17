@@ -94,6 +94,9 @@ const api: ElectronApi = {
   onTeammateOutput: createOnHandler(MainToRenderer.TEAMMATE_OUTPUT),
   sendTeammateInput: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_INPUT, req),
 
+  // Auto-start event
+  onTeamAutoStarted: createOnHandler<{ projectName: string; projectPath: string; agents: unknown[] }>('team:auto-started'),
+
   // Menu events
   onMenuTeamStart: createOnHandler<unknown>('menu:team-start'),
   onMenuTeamStop: createOnHandler<void>('menu:team-stop')

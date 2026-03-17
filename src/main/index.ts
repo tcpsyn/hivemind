@@ -297,10 +297,16 @@ function initializeServices(): void {
 }
 
 async function autoStartTeamSession(projectName: string, projectPath: string): Promise<void> {
-  if (!ipcServices) return
+  if (!ipcServices || !mainWindow) return
   try {
-    await ipcServices.onTeamStart({
+    const result = await ipcServices.onTeamStart({
       config: { name: projectName, project: projectPath, agents: [] }
+    })
+    // Tell the renderer about the auto-started team
+    mainWindow.webContents.send('team:auto-started', {
+      projectName,
+      projectPath,
+      agents: result.agents
     })
   } catch (err) {
     console.error('Auto-start team session failed:', err)
@@ -330,12 +336,15 @@ app.whenReady().then(async () => {
   createWindow()
   initializeServices()
 
-  // Auto-start a team session pointed at the current directory
-  const projectPath = process.cwd()
-  const projectName = projectPath.split('/').pop() || 'project'
-  updateWindowTitle(projectName)
-
-  autoStartTeamSession(projectName, projectPath)
+  // Auto-start a team session once the renderer is ready
+  mainWindow!.webContents.on('did-finish-load', () => {
+    // Use command line arg, CWD, or home directory as project path
+    const projectPath = process.argv.find(a => !a.startsWith('-') && a.startsWith('/') && a !== process.execPath)
+      || (process.cwd() !== '/' ? process.cwd() : app.getPath('home'))
+    const projectName = projectPath.split('/').pop() || 'project'
+    updateWindowTitle(projectName)
+    autoStartTeamSession(projectName, projectPath)
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

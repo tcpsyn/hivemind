@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { tmpdir } from 'os'
 import { existsSync, readdirSync, unlinkSync } from 'fs'
 import { execFile } from 'child_process'
@@ -170,8 +170,20 @@ export class TeamSession extends EventEmitter {
     return this.proxyServer
   }
 
+  static getBinDir(): string {
+    // In production, bin/ is in extraResources; in dev, it's in project root
+    if (process.resourcesPath) {
+      const prodBin = join(process.resourcesPath, 'bin')
+      if (existsSync(join(prodBin, 'tmux'))) return prodBin
+    }
+    // Fallback: relative to main process file, or cwd
+    const devBin = resolve(__dirname, '../../bin')
+    if (existsSync(join(devBin, 'tmux'))) return devBin
+    return join(process.cwd(), 'bin')
+  }
+
   getLeadEnv(tmuxEnvValue?: string): Record<string, string> {
-    const binDir = join(process.cwd(), 'bin')
+    const binDir = TeamSession.getBinDir()
     const currentPath = process.env.PATH || ''
     const env: Record<string, string> = {
       PATH: `${binDir}:${currentPath}`,

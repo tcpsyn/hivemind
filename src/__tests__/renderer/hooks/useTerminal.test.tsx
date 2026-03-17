@@ -7,10 +7,13 @@ const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoi
   const mockTerminal = {
     open: vi.fn(),
     write: vi.fn(),
+    reset: vi.fn(),
     dispose: vi.fn(),
     onData: vi.fn(() => ({ dispose: vi.fn() })),
     loadAddon: vi.fn(),
     focus: vi.fn(),
+    cols: 80,
+    rows: 24,
     options: {}
   }
 
@@ -91,6 +94,8 @@ describe('useTerminal', () => {
     act(() => {
       outputCallback?.({ agentId: 'agent-1', data: 'hello world' })
     })
+    // First agent output clears the banner then writes
+    expect(mockTerminal.reset).toHaveBeenCalled()
     expect(mockTerminal.write).toHaveBeenCalledWith('hello world')
   })
 
@@ -103,6 +108,7 @@ describe('useTerminal', () => {
     })
 
     renderHook(() => useTerminal('agent-1', containerRef), { wrapper })
+    mockTerminal.write.mockClear() // clear banner writes
 
     act(() => {
       outputCallback?.({ agentId: 'agent-2', data: 'not for me' })
