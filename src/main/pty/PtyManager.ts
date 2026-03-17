@@ -1,7 +1,9 @@
 import { EventEmitter } from 'events'
 import * as pty from 'node-pty'
-import type { AgentConfig, AgentState } from '../../shared/types'
+import type { AgentConfig, AgentState, PaneInfo } from '../../shared/types'
 import { INPUT_PROMPT_PATTERNS } from '../../shared/constants'
+import { PtyOutputBuffer } from '../tmux/PtyOutputBuffer'
+import { parseClaudeCommand } from '../tmux/parseClaudeCommand'
 
 interface PtyEntry {
   pty: pty.IPty
@@ -13,6 +15,9 @@ interface PtyEntry {
 export class PtyManager extends EventEmitter {
   private entries = new Map<string, PtyEntry>()
   private idCounter = 0
+  private paneIdToAgentId = new Map<string, string>()
+  private agentIdToPaneId = new Map<string, string>()
+  private outputBuffers = new Map<string, PtyOutputBuffer>()
 
   async createPty(config: AgentConfig, cwd: string): Promise<AgentState> {
     const id = `agent-${++this.idCounter}-${Date.now()}`
@@ -41,8 +46,12 @@ export class PtyManager extends EventEmitter {
     const entry: PtyEntry = { pty: term, agent, config, cwd }
     this.entries.set(id, entry)
 
+    const buffer = new PtyOutputBuffer()
+    this.outputBuffers.set(id, buffer)
+
     term.onData((data: string) => {
       agent.lastActivity = Date.now()
+      buffer.append(data)
       this.emit('data', id, data)
       this.checkForInputNeeded(id, data)
     })
@@ -57,6 +66,110 @@ export class PtyManager extends EventEmitter {
     })
 
     return agent
+  }
+
+  async createTeammatePty(
+    command: string,
+    cwd: string,
+    env: Record<string, string>,
+    sessionName: string,
+    paneId: string
+  ): Promise<AgentState> {
+    const parsed = parseClaudeCommand(command)
+    const id = `agent-${++this.idCounter}-${Date.now()}`
+    const shell = process.env.SHELL || '/bin/zsh'
+
+    const term = pty.spawn(shell, ['-l', '-c', command], {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd,
+      env: { ...process.env, ...env } as Record<string, string>
+    })
+
+    const agent: AgentState = {
+      id,
+      name: parsed.agentName ?? 'teammate',
+      role: parsed.agentType ?? 'teammate',
+      avatar: '',
+      color: parsed.agentColor ?? '',
+      status: 'running',
+      needsInput: false,
+      lastActivity: Date.now(),
+      pid: term.pid,
+      paneId,
+      sessionName,
+      isTeammate: true,
+      agentType: parsed.agentType
+    }
+
+    const config: AgentConfig = {
+      name: agent.name,
+      role: agent.role,
+      command
+    }
+
+    const entry: PtyEntry = { pty: term, agent, config, cwd }
+    this.entries.set(id, entry)
+
+    this.paneIdToAgentId.set(paneId, id)
+    this.agentIdToPaneId.set(id, paneId)
+
+    const buffer = new PtyOutputBuffer()
+    this.outputBuffers.set(id, buffer)
+
+    term.onData((data: string) => {
+      agent.lastActivity = Date.now()
+      buffer.append(data)
+      this.emit('data', id, data)
+      this.checkForInputNeeded(id, data)
+    })
+
+    term.onExit((e: { exitCode: number; signal?: number }) => {
+      agent.status = 'stopped'
+      this.emit('exit', id, e.exitCode)
+
+      if (e.exitCode !== 0) {
+        this.emit('error', id, new Error(`Process exited with code ${e.exitCode}`))
+      }
+    })
+
+    this.emit('agent-spawned', id, agent, paneId, sessionName)
+
+    return agent
+  }
+
+  registerPane(paneId: string, agentId: string): void {
+    this.paneIdToAgentId.set(paneId, agentId)
+    this.agentIdToPaneId.set(agentId, paneId)
+  }
+
+  capturePane(agentId: string): string {
+    const buffer = this.outputBuffers.get(agentId)
+    return buffer ? buffer.capture() : ''
+  }
+
+  getPaneInfo(agentId: string): PaneInfo | null {
+    const entry = this.entries.get(agentId)
+    if (!entry) return null
+
+    const paneId = this.agentIdToPaneId.get(agentId) ?? entry.agent.paneId
+    if (!paneId) return null
+
+    return {
+      paneId,
+      pid: entry.pty.pid,
+      cols: entry.pty.cols,
+      rows: entry.pty.rows,
+      name: entry.agent.name,
+      isActive: entry.agent.status === 'running'
+    }
+  }
+
+  getAgentByPaneId(paneId: string): AgentState | undefined {
+    const agentId = this.paneIdToAgentId.get(paneId)
+    if (!agentId) return undefined
+    return this.entries.get(agentId)?.agent
   }
 
   sendInput(agentId: string, data: string): void {
@@ -80,6 +193,14 @@ export class PtyManager extends EventEmitter {
   destroyPty(agentId: string): void {
     const entry = this.entries.get(agentId)
     if (!entry) return
+
+    const paneId = this.agentIdToPaneId.get(agentId)
+    if (paneId) {
+      this.paneIdToAgentId.delete(paneId)
+      this.agentIdToPaneId.delete(agentId)
+    }
+    this.outputBuffers.delete(agentId)
+
     try {
       entry.pty.kill()
     } catch {
