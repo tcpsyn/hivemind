@@ -119,13 +119,14 @@ export class TeamSession extends EventEmitter {
   }
 
   getLeadEnv(): Record<string, string> {
-    // In dev, fake-tmux.js is in src/main/tmux/; in prod, it should be copied to out/main/
-    // Use app.isPackaged to determine path, or resolve from project root
-    const fakeTmuxPath = join(process.cwd(), 'src', 'main', 'tmux', 'fake-tmux.js')
+    // Prepend our bin/ directory to PATH so Claude finds our fake tmux binary first
+    const fakeBinDir = join(process.cwd(), 'bin')
+    const currentPath = process.env.PATH || ''
     return {
-      TMUX_PROGRAM: fakeTmuxPath,
+      PATH: `${fakeBinDir}:${currentPath}`,
       TMUX: `${this.socketPath},${process.pid},0`,
       TMUX_PANE: '%0',
+      TMUX_PROGRAM: join(fakeBinDir, 'tmux'),
       TERM_PROGRAM: 'tmux',
       TERM: 'tmux-256color',
       CC_FRONTEND_SOCKET: this.socketPath

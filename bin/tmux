@@ -1,0 +1,3 @@
+#!/bin/bash
+# Fake tmux wrapper — routes to our Node.js shim
+exec node "$(dirname "$0")/../src/main/tmux/fake-tmux.js" "$@"

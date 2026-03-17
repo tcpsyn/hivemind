@@ -8,7 +8,11 @@ const BOOLEAN_FLAGS = new Set(['d', 'h', 'v', 'p', 'l', 'a', 'e', 'g'])
 const SEND_KEYS_FLAGS_WITH_VALUE = new Set(['t'])
 const TIMEOUT_MS = 5000
 
+const fs = require('fs')
 const argv = process.argv.slice(2)
+
+// Debug logging
+fs.appendFileSync('/tmp/fake-tmux-debug.log', `[${new Date().toISOString()}] args: ${JSON.stringify(argv)} socket: ${process.env.CC_FRONTEND_SOCKET || process.env.TMUX || 'NONE'}\n`)
 
 if (argv.length === 0) {
   process.stderr.write('fake-tmux: error: no command specified\n')
