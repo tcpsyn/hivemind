@@ -26,7 +26,14 @@ export class PtyManager extends EventEmitter {
       ? { ...process.env, ...extraEnv } as Record<string, string>
       : process.env as Record<string, string>
 
-    const term = pty.spawn(shell, ['-l', '-c', config.command], {
+    // If extraEnv has a custom PATH, prepend it in the command itself
+    // so it survives login shell PATH resets from .zshrc
+    let command = config.command
+    if (extraEnv?.PATH) {
+      command = `export PATH="${extraEnv.PATH}" && ${config.command}`
+    }
+
+    const term = pty.spawn(shell, ['-l', '-c', command], {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
@@ -82,7 +89,13 @@ export class PtyManager extends EventEmitter {
     const id = `agent-${++this.idCounter}-${Date.now()}`
     const shell = process.env.SHELL || '/bin/zsh'
 
-    const term = pty.spawn(shell, ['-l', '-c', command], {
+    // Prepend custom PATH in command so it survives login shell PATH resets
+    let finalCommand = command
+    if (env.PATH) {
+      finalCommand = `export PATH="${env.PATH}" && ${command}`
+    }
+
+    const term = pty.spawn(shell, ['-l', '-c', finalCommand], {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
