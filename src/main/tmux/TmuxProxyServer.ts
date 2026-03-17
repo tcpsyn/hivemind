@@ -45,6 +45,7 @@ export class TmuxProxyServer extends EventEmitter {
   private paneStreams = new Map<string, fs.ReadStream>()
   private pollInterval: ReturnType<typeof setInterval> | null = null
   private leadPaneId: string
+  private leadSessionName: string | null = null
   private execCommand: ExecCommand
   private pollIntervalMs: number
 
@@ -142,14 +143,31 @@ export class TmuxProxyServer extends EventEmitter {
   }
 
   async discoverPanes(): Promise<void> {
+    // First, find which session the lead pane belongs to
+    let sessionFilter = ''
+    if (!this.leadSessionName) {
+      try {
+        const sessionResult = await this.execCommand(this.realTmuxPath, [
+          'display-message',
+          '-t',
+          this.leadPaneId,
+          '-p',
+          '#{session_name}'
+        ])
+        this.leadSessionName = sessionResult.stdout.trim()
+      } catch {
+        // Lead pane might not be in tmux yet, list all and filter
+      }
+    }
+    sessionFilter = this.leadSessionName || ''
+
+    // List panes — only from the lead's session if known, otherwise all
     let stdout: string
     try {
-      const result = await this.execCommand(this.realTmuxPath, [
-        'list-panes',
-        '-a',
-        '-F',
-        '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
-      ])
+      const listArgs = sessionFilter
+        ? ['list-panes', '-t', sessionFilter, '-a', '-F', '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}']
+        : ['list-panes', '-a', '-F', '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}']
+      const result = await this.execCommand(this.realTmuxPath, listArgs)
       stdout = result.stdout
     } catch (err) {
       this.emit('error', err)
@@ -165,7 +183,9 @@ export class TmuxProxyServer extends EventEmitter {
 
       const [paneId, pidStr, windowName, tty, sessionName] = parts
 
+      // Skip lead pane and panes from other sessions
       if (paneId === this.leadPaneId) continue
+      if (this.leadSessionName && sessionName !== this.leadSessionName) continue
 
       currentPaneIds.add(paneId)
 
