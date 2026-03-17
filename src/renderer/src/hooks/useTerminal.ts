@@ -10,7 +10,9 @@ export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElem
     if (!containerRef.current) return
 
     const term = new Terminal({
-      cursorBlink: true,
+      cursorBlink: false,
+      cursorStyle: 'bar',
+      cursorInactiveStyle: 'none',
       fontSize: 13,
       fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
       theme: {
@@ -73,13 +75,15 @@ export function useTerminal(agentId: string, containerRef: RefObject<HTMLDivElem
       window.api.agentInput({ agentId, data })
     })
 
-    // Handle resize and trigger PTY resize so Claude redraws
-    let initialResizeDone = false
+    // Handle resize — sync PTY dimensions on every resize
+    let lastCols = 0
+    let lastRows = 0
     const resizeObserver = new ResizeObserver(() => {
       try {
         fitAddon.fit()
-        if (!initialResizeDone && term.cols && term.rows) {
-          initialResizeDone = true
+        if (term.cols && term.rows && (term.cols !== lastCols || term.rows !== lastRows)) {
+          lastCols = term.cols
+          lastRows = term.rows
           window.api.agentResize?.({ agentId, cols: term.cols, rows: term.rows })
         }
       } catch {
