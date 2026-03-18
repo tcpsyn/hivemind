@@ -362,9 +362,11 @@ export class TmuxProxyServer extends EventEmitter {
       try {
         const { stdout } = await this.execCommand(
           this.realTmuxPath,
-          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-S', '-3'])
+          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-J'])
         )
-        const status = this.parseClaudeStatus(stdout)
+        // Only parse the last few lines where the status bar lives
+        const lastLines = stdout.split('\n').slice(-5).join('\n')
+        const status = this.parseClaudeStatus(lastLines)
         if (status) {
           this.emit('teammate-status-update', { paneId, ...status })
         }
@@ -385,17 +387,20 @@ export class TmuxProxyServer extends EventEmitter {
     // or: cc_frontend  Opus 4.6 (1M context)  [████] 3%  ⌞ feature...
     const lines = output.split('\n').filter((l) => l.trim())
     for (const line of lines) {
-      // Look for model pattern (Opus/Sonnet/Haiku + version)
-      const modelMatch = line.match(/(Opus|Sonnet|Haiku)\s+[\d.]+/)
+      // Look for context % pattern — most reliable indicator of a status line
+      const pctMatch = line.match(/(\d+)%/)
+      if (!pctMatch) continue
+
+      // Look for model pattern (Opus/Sonnet/Haiku + optional version)
+      const modelMatch = line.match(/(Opus|Sonnet|Haiku)(?:\s+[\d.]+)?/i)
       if (modelMatch) {
         const model = modelMatch[0]
-        const pctMatch = line.match(/(\d+)%/)
-        const contextPercent = pctMatch ? pctMatch[1] + '%' : undefined
+        const contextPercent = pctMatch[1] + '%'
         // Project name is usually at the start
-        const projectMatch = line.match(/^\s*(\S+)\s+(?:Opus|Sonnet|Haiku)/)
+        const projectMatch = line.match(/^\s*(\S+)\s+(?:Opus|Sonnet|Haiku)/i)
         const project = projectMatch ? projectMatch[1] : undefined
-        // Branch after ⌞ or /
-        const branchMatch = line.match(/[⌞/]\s*(.+?)\s*$/)
+        // Branch after ⌞ or ⌟ or /
+        const branchMatch = line.match(/[⌞⌟/]\s*(.+?)\s*$/)
         const branch = branchMatch ? branchMatch[1].trim() : undefined
 
         return { model, contextPercent, project, branch }

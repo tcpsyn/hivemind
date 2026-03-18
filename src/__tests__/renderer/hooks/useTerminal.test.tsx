@@ -21,6 +21,7 @@ const { mockTerminal, mockElement, mockFitAddon, mockOnAgentOutput, mockAgentInp
       onData: vi.fn(() => ({ dispose: vi.fn() })),
       loadAddon: vi.fn(),
       focus: vi.fn(),
+      refresh: vi.fn(),
       cols: 80,
       rows: 24,
       options: {},

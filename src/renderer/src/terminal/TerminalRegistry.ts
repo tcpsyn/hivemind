@@ -81,11 +81,16 @@ export function attachTerminal(tabId: string, id: string, container: HTMLDivElem
     entry.pendingOutput = []
   }
 
-  try {
-    fitAddon.fit()
-  } catch {
-    // fit may fail if container has no dimensions yet
-  }
+  // Delay fit/refresh/focus until after DOM layout settles
+  requestAnimationFrame(() => {
+    try {
+      fitAddon.fit()
+    } catch {
+      // fit may fail if container has no dimensions yet
+    }
+    terminal.refresh(0, terminal.rows - 1)
+    terminal.focus()
+  })
 }
 
 /**

@@ -1,13 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import {
-  getOrCreateTerminal,
-  attachTerminal,
-  detachTerminal,
-  isTerminalAttached,
-  bufferOutput
-} from '../terminal/TerminalRegistry'
+import { getOrCreateTerminal, attachTerminal, detachTerminal } from '../terminal/TerminalRegistry'
 
 const RESIZE_DEBOUNCE_MS = 150
 
@@ -25,14 +19,12 @@ export function useTeammateTerminal(
     const termId = `teammate:${paneId}`
 
     const entry = getOrCreateTerminal(tabId, termId, { cursorBlink: true }, (term) => {
-      // IPC output subscription — stays active even when detached from DOM
+      // IPC output subscription — writes directly to xterm buffer even when detached.
+      // xterm.js updates its internal buffer without canvas rendering when not in DOM,
+      // and paints correctly on reattach.
       const unsubscribe = window.api.onTeammateOutput((payload) => {
         if (payload.paneId === paneId && payload.tabId === tabId) {
-          if (isTerminalAttached(tabId, termId)) {
-            term.write(payload.data)
-          } else {
-            bufferOutput(tabId, termId, payload.data)
-          }
+          term.write(payload.data)
         }
       })
 

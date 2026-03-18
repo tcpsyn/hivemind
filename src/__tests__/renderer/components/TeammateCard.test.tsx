@@ -20,11 +20,21 @@ function makeTeammate(overrides: Partial<AgentState> = {}): AgentState {
   }
 }
 
+let capturedOutputCb: ((payload: { paneId: string; tabId: string; data: string }) => void) | null =
+  null
+
 beforeEach(() => {
+  capturedOutputCb = null
   Object.defineProperty(window, 'api', {
     value: {
       agentInput: vi.fn().mockResolvedValue(undefined),
-      sendTeammateInput: vi.fn().mockResolvedValue(undefined)
+      sendTeammateInput: vi.fn().mockResolvedValue(undefined),
+      onTeammateOutput: vi.fn(
+        (cb: (payload: { paneId: string; tabId: string; data: string }) => void) => {
+          capturedOutputCb = cb
+          return vi.fn()
+        }
+      )
     },
     writable: true,
     configurable: true
@@ -132,27 +142,21 @@ describe('TeammateCard', () => {
   })
 
   describe('activity detection', () => {
-    it('shows active status dot when lastActivity changes', async () => {
+    it('shows active status dot when teammate output arrives', async () => {
       vi.useFakeTimers()
-      const agent = makeTeammate({ lastActivity: 1000 })
-      const { rerender } = renderCard(agent)
+      const agent = makeTeammate({ paneId: '%1' })
+      renderCard(agent)
 
-      // Update lastActivity to trigger active state
-      rerender(
-        <AppProvider>
-          <TeammateCard
-            agent={{ ...agent, lastActivity: 2000 }}
-            isSelected={false}
-            onSelect={vi.fn()}
-          />
-        </AppProvider>
-      )
+      // Simulate teammate output to trigger active state
+      act(() => {
+        capturedOutputCb?.({ paneId: '%1', tabId: 'tab-1', data: 'hello' })
+      })
 
       expect(screen.getByTestId('teammate-status-dot')).toHaveClass('active')
 
-      // After 3 seconds, active class should be removed
+      // After 2 seconds, active class should be removed
       await act(async () => {
-        vi.advanceTimersByTime(3100)
+        vi.advanceTimersByTime(2100)
       })
 
       expect(screen.getByTestId('teammate-status-dot')).not.toHaveClass('active')
