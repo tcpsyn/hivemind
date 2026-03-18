@@ -24,7 +24,20 @@ beforeEach(() => {
       onAgentStatusChange: vi.fn(() => vi.fn()),
       onAgentInputNeeded: vi.fn(() => vi.fn()),
       onFileTreeUpdate: vi.fn(() => vi.fn()),
-      onGitStatusUpdate: vi.fn(() => vi.fn())
+      onGitStatusUpdate: vi.fn(() => vi.fn()),
+      onTeammateSpawned: vi.fn(() => vi.fn()),
+      onTeammateExited: vi.fn(() => vi.fn()),
+      onTeammateOutput: vi.fn(() => vi.fn()),
+      onTeammateRenamed: vi.fn(() => vi.fn()),
+      onTeammateStatus: vi.fn(() => vi.fn()),
+      onTeamAutoStarted: vi.fn(() => vi.fn()),
+      onMenuTeamStart: vi.fn(() => vi.fn()),
+      onMenuTeamStop: vi.fn(() => vi.fn()),
+      sendTeammateInput: vi.fn(),
+      teammateResize: vi.fn(),
+      tabCreate: vi.fn(),
+      tabClose: vi.fn(),
+      openFolderDialog: vi.fn()
     },
     writable: true,
     configurable: true
