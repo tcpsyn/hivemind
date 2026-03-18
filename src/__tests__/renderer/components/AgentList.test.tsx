@@ -4,6 +4,8 @@ import { AppProvider, useAppDispatch } from '../../../renderer/src/state/AppCont
 import AgentList from '../../../renderer/src/components/AgentList'
 import type { AgentState } from '../../../shared/types'
 
+const TAB_ID = 'tab-default'
+
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   return {
     id: 'agent-1',
@@ -20,7 +22,7 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
 
 function SetupAgents({ agents, children }: { agents: AgentState[]; children: React.ReactNode }) {
   const dispatch = useAppDispatch()
-  agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a }))
+  agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a, tabId: TAB_ID }))
   return <>{children}</>
 }
 

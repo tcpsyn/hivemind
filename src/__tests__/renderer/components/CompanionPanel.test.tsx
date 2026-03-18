@@ -3,10 +3,10 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { CompanionPanel } from '../../../renderer/src/components/CompanionPanel'
 import {
   AppProvider,
-  type ExtendedAppState,
+  createProjectTab,
   initialAppState
 } from '../../../renderer/src/state/AppContext'
-import type { AgentState } from '../../../shared/types'
+import type { AgentState, AppState } from '../../../shared/types'
 
 vi.mock('../../../renderer/src/components/TerminalPane', () => ({
   TerminalPane: ({ agent }: { agent: AgentState }) => (
@@ -19,6 +19,8 @@ vi.mock('../../../renderer/src/components/TeammateTerminalPane', () => ({
     <div data-testid={`teammate-terminal-pane-${agent.id}`}>{agent.name}</div>
   )
 }))
+
+const TAB_ID = 'tab-default'
 
 function makeTeammate(id: string, overrides: Partial<AgentState> = {}): AgentState {
   return {
@@ -36,21 +38,24 @@ function makeTeammate(id: string, overrides: Partial<AgentState> = {}): AgentSta
   }
 }
 
-function makeStateWith(
-  teammates: AgentState[],
-  selectedId: string | null = null
-): ExtendedAppState {
+function makeStateWith(teammates: AgentState[], selectedId: string | null = null): AppState {
   const agents = new Map<string, AgentState>()
   for (const t of teammates) {
     agents.set(t.id, t)
   }
+  const tab = createProjectTab(TAB_ID, '~', '~')
   return {
     ...initialAppState,
-    agents,
-    layout: {
-      ...initialAppState.layout,
-      selectedTeammateId: selectedId
-    }
+    tabs: new Map([
+      [
+        TAB_ID,
+        {
+          ...tab,
+          agents,
+          layout: { ...tab.layout, selectedTeammateId: selectedId }
+        }
+      ]
+    ])
   }
 }
 

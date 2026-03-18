@@ -1,13 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  AppProvider,
-  initialAppState,
-  type ExtendedAppState
-} from '../../../renderer/src/state/AppContext'
+import { AppProvider, initialAppState } from '../../../renderer/src/state/AppContext'
 import EditorView from '../../../renderer/src/components/EditorView'
-import type { EditorTab } from '../../../shared/types'
+import type { EditorTab, AppState } from '../../../shared/types'
 
 const { mockMonacoCreate, mockMonacoSetTheme, mockMonacoCreateModel, mockCreateDiffEditor } =
   vi.hoisted(() => ({
@@ -64,13 +60,16 @@ function createTab(overrides: Partial<EditorTab> = {}): EditorTab {
 }
 
 function renderEditorView(tabs: EditorTab[] = [], activeFileId: string | null = null) {
-  const state: ExtendedAppState = {
-    ...initialAppState,
+  const defaultTab = initialAppState.tabs.get('tab-default')!
+  const tabsMap = new Map(initialAppState.tabs)
+  tabsMap.set('tab-default', {
+    ...defaultTab,
     editor: {
       openFiles: tabs,
       activeFileId: activeFileId ?? (tabs.length > 0 ? tabs[0].id : null)
     }
-  }
+  })
+  const state: AppState = { ...initialAppState, tabs: tabsMap }
 
   return render(
     <AppProvider initialState={state}>

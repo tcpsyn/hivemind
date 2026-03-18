@@ -23,7 +23,6 @@ const { registerIpcHandlers, removeIpcHandlers, sendToRenderer } =
 
 function createMockServices() {
   return {
-    onAgentCreate: vi.fn().mockResolvedValue({ agentId: 'a1', agent: {} }),
     onAgentInput: vi.fn().mockResolvedValue(undefined),
     onAgentStop: vi.fn().mockResolvedValue(undefined),
     onAgentRestart: vi.fn().mockResolvedValue(undefined),
@@ -32,10 +31,10 @@ function createMockServices() {
     onFileWrite: vi.fn().mockResolvedValue(undefined),
     onFileTreeRequest: vi.fn().mockResolvedValue([]),
     onGitDiff: vi.fn().mockResolvedValue({ diff: '', filePath: '' }),
-    onGitStatus: vi.fn().mockResolvedValue({ files: [], branch: 'main', ahead: 0, behind: 0 }),
     onTeamStart: vi.fn().mockResolvedValue({ agents: [] }),
     onTeamStop: vi.fn().mockResolvedValue(undefined),
-    onTeammateInput: vi.fn().mockResolvedValue(undefined)
+    onTeammateInput: vi.fn().mockResolvedValue(undefined),
+    onTeammateResize: vi.fn().mockResolvedValue(undefined)
   }
 }
 
@@ -57,24 +56,15 @@ describe('IPC Handlers', () => {
       }
     })
 
-    it('registers exactly 13 handlers', () => {
+    it('registers a handler for every RendererToMain channel', () => {
       const services = createMockServices()
       registerIpcHandlers(services)
-      expect(handlers.size).toBe(13)
+      // +1 for dialog:open-folder which isn't in RendererToMain enum
+      expect(handlers.size).toBe(Object.keys(RendererToMain).length + 1)
     })
   })
 
   describe('handler routing', () => {
-    it('routes agent:create to onAgentCreate', async () => {
-      const services = createMockServices()
-      registerIpcHandlers(services)
-
-      const handler = handlers.get(RendererToMain.AGENT_CREATE)!
-      const req = { config: { name: 'a', role: 'r', command: 'c' }, cwd: '/tmp' }
-      await handler({}, req)
-      expect(services.onAgentCreate).toHaveBeenCalledWith(req)
-    })
-
     it('routes agent:input to onAgentInput', async () => {
       const services = createMockServices()
       registerIpcHandlers(services)

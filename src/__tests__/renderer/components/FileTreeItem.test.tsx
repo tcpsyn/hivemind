@@ -130,45 +130,35 @@ describe('FileTreeItem', () => {
 
   describe('git status badges', () => {
     it('shows M badge for modified files', () => {
-      render(
-        <FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'modified' })} />
-      )
+      render(<FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'modified' })} />)
       const badge = screen.getByTestId('git-status')
       expect(badge).toHaveTextContent('M')
       expect(badge).toHaveClass('git-status-modified')
     })
 
     it('shows A badge for added files', () => {
-      render(
-        <FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'added' })} />
-      )
+      render(<FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'added' })} />)
       const badge = screen.getByTestId('git-status')
       expect(badge).toHaveTextContent('A')
       expect(badge).toHaveClass('git-status-added')
     })
 
     it('shows D badge for deleted files', () => {
-      render(
-        <FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'deleted' })} />
-      )
+      render(<FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'deleted' })} />)
       const badge = screen.getByTestId('git-status')
       expect(badge).toHaveTextContent('D')
       expect(badge).toHaveClass('git-status-deleted')
     })
 
     it('shows ? badge for untracked files', () => {
-      render(
-        <FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'untracked' })} />
-      )
+      render(<FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'untracked' })} />)
       const badge = screen.getByTestId('git-status')
       expect(badge).toHaveTextContent('?')
       expect(badge).toHaveClass('git-status-untracked')
     })
 
     it('shows R badge for renamed files', () => {
-      render(
-        <FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'renamed' })} />
-      )
+      render(<FileTreeItem {...defaultProps} node={makeFileNode({ gitStatus: 'renamed' })} />)
       const badge = screen.getByTestId('git-status')
       expect(badge).toHaveTextContent('R')
       expect(badge).toHaveClass('git-status-modified')

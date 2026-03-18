@@ -18,7 +18,7 @@ const { mockDiffDispose, mockCreateDiffEditor } = vi.hoisted(() => {
 vi.mock('monaco-editor', () => ({
   editor: {
     createDiffEditor: mockCreateDiffEditor,
-    createModel: vi.fn(() => ({})),
+    createModel: vi.fn(() => ({ dispose: vi.fn() })),
     setTheme: vi.fn()
   }
 }))

@@ -8,6 +8,7 @@ import type { FileChangedPayload } from '../../shared/ipc-channels'
 
 const LARGE_FILE_THRESHOLD = 1_000_000 // 1MB
 const SELF_WRITE_IGNORE_MS = 500
+const REFRESH_DEBOUNCE_MS = 500
 
 export class FileExplorerService {
   private fileService: FileService
@@ -15,16 +16,19 @@ export class FileExplorerService {
   private gitService: GitService | null = null
   private window: BrowserWindow | null = null
   private rootPath: string = ''
+  private tabId: string = ''
   private recentWrites = new Map<string, number>()
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     this.fileService = new FileService()
     this.fileWatcher = new FileWatcher()
   }
 
-  async start(rootPath: string, window: BrowserWindow): Promise<void> {
+  async start(rootPath: string, window: BrowserWindow, tabId: string): Promise<void> {
     this.rootPath = rootPath
     this.window = window
+    this.tabId = tabId
     this.gitService = new GitService(rootPath)
 
     this.fileWatcher.on('file-changed', (event) => {
@@ -35,6 +39,10 @@ export class FileExplorerService {
   }
 
   async stop(): Promise<void> {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer)
+      this.refreshTimer = null
+    }
     await this.fileWatcher.stop()
     this.window = null
     this.gitService = null
@@ -64,7 +72,7 @@ export class FileExplorerService {
     return LARGE_FILE_THRESHOLD
   }
 
-  private async handleFileChange(event: FileChangedPayload['event']): Promise<void> {
+  private handleFileChange(event: FileChangedPayload['event']): void {
     if (!this.window) return
 
     // Filter self-triggered events
@@ -74,21 +82,36 @@ export class FileExplorerService {
       return
     }
 
-    sendFileChanged(this.window, { event })
+    sendFileChanged(this.window, { tabId: this.tabId, event })
 
-    // Refresh tree and push to renderer
+    // Coalesce rapid file changes into a single tree rebuild + git status
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer)
+    }
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = null
+      this.refreshTreeAndGitStatus()
+    }, REFRESH_DEBOUNCE_MS)
+  }
+
+  private async refreshTreeAndGitStatus(): Promise<void> {
+    if (!this.window) return
+
     try {
       const tree = await this.getFileTree()
-      sendFileTreeUpdate(this.window, { tree })
+      if (this.window) {
+        sendFileTreeUpdate(this.window, { tabId: this.tabId, tree })
+      }
     } catch {
       // tree refresh failure is non-fatal
     }
 
-    // Refresh git status and push
     try {
-      if (this.gitService) {
+      if (this.gitService && this.window) {
         const status = await this.gitService.getStatus()
-        sendGitStatusUpdate(this.window, { status })
+        if (this.window) {
+          sendGitStatusUpdate(this.window, { tabId: this.tabId, status })
+        }
       }
     } catch {
       // git status failure is non-fatal

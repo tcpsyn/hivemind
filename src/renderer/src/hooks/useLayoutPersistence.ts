@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
+import type { ActiveTab } from '../../../shared/types'
 
 export interface LayoutStorage {
   get: (key: string) => unknown
@@ -10,12 +11,6 @@ interface PersistedLayout {
   sidebarWidth: number
   activeTab: string
   sidebarCollapsed: boolean
-  gridConfig: { layout: string; columns: number; rows: number }
-}
-
-interface PersistedProject {
-  name: string
-  path: string
 }
 
 export function createLocalStorage(): LayoutStorage {
@@ -55,55 +50,29 @@ export function useLayoutPersistence(storage: LayoutStorage) {
       }
       if (savedLayout.activeTab) {
         dispatch({
-          type: 'SET_ACTIVE_TAB',
-          payload: savedLayout.activeTab as 'agents' | 'editor' | 'git'
+          type: 'SET_ACTIVE_FEATURE_TAB',
+          payload: savedLayout.activeTab as ActiveTab
         })
       }
       if (savedLayout.sidebarCollapsed) {
         dispatch({ type: 'TOGGLE_SIDEBAR' })
       }
-      if (savedLayout.gridConfig) {
-        dispatch({
-          type: 'SET_LAYOUT',
-          payload: {
-            gridConfig: {
-              layout: savedLayout.gridConfig.layout as 'auto',
-              columns: savedLayout.gridConfig.columns,
-              rows: savedLayout.gridConfig.rows
-            }
-          }
-        })
-      }
-    }
-
-    const savedProject = storage.get('project') as PersistedProject | undefined
-    if (savedProject) {
-      dispatch({ type: 'SET_PROJECT', payload: savedProject })
     }
   }, [storage, dispatch])
 
-  // Persist on state change
+  // Persist global layout on state change
   useEffect(() => {
     if (!isInitialized.current) return
 
     storage.set('layout', {
-      sidebarWidth: state.layout.sidebarWidth,
-      activeTab: state.layout.activeTab,
-      sidebarCollapsed: state.layout.sidebarCollapsed,
-      gridConfig: state.layout.gridConfig
+      sidebarWidth: state.globalLayout.sidebarWidth,
+      activeTab: state.activeFeatureTab,
+      sidebarCollapsed: state.globalLayout.sidebarCollapsed
     })
   }, [
     storage,
-    state.layout.sidebarWidth,
-    state.layout.activeTab,
-    state.layout.sidebarCollapsed,
-    state.layout.gridConfig
+    state.globalLayout.sidebarWidth,
+    state.activeFeatureTab,
+    state.globalLayout.sidebarCollapsed
   ])
-
-  useEffect(() => {
-    if (!isInitialized.current) return
-    if (state.project.name || state.project.path) {
-      storage.set('project', state.project)
-    }
-  }, [storage, state.project])
 }

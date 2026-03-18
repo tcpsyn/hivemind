@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useAppDispatch } from '../state/AppContext'
+import { useAppDispatch, useAppState } from '../state/AppContext'
 import { useFileTree } from '../hooks/useFileTree'
 import FileTreeItem from './FileTreeItem'
 import { detectLanguage } from '../../../shared/languages'
@@ -33,6 +33,7 @@ function flattenVisible(
 export default function FileTree({ onFileClick }: FileTreeProps) {
   const { tree, loading, toggleDir, isExpanded } = useFileTree()
   const dispatch = useAppDispatch()
+  const { activeTabId } = useAppState()
   const [focusIndex, setFocusIndex] = useState(-1)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -52,10 +53,10 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
         isModified: false,
         isReadOnly: true
       }
-      dispatch({ type: 'ADD_EDITOR_TAB', payload: tab })
-      dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: node.path })
+      dispatch({ type: 'ADD_EDITOR_TAB', payload: tab, tabId: activeTabId })
+      dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: node.path, tabId: activeTabId })
     },
-    [dispatch, onFileClick]
+    [dispatch, onFileClick, activeTabId]
   )
 
   const handleContextMenu = useCallback((e: React.MouseEvent, node: FileTreeNode) => {

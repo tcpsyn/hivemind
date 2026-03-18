@@ -3,7 +3,7 @@ import { watch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import type { FileChangeEvent } from '../../shared/types'
 
-const IGNORED_PATTERNS = ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/out/**']
+const IGNORED_PATTERNS = [/node_modules/, /\.git/, /\.claude/, /dist/, /out/]
 const DEBOUNCE_MS = 100
 
 export class FileWatcher extends EventEmitter {
@@ -19,7 +19,15 @@ export class FileWatcher extends EventEmitter {
     this.watcher = watch(rootPath, {
       ignoreInitial: true,
       ignored: IGNORED_PATTERNS,
-      persistent: true
+      persistent: true,
+      depth: 5,
+      usePolling: false
+    })
+
+    // Swallow EMFILE errors instead of letting them become unhandled rejections
+    this.watcher.on('error', (err: Error) => {
+      if ((err as NodeJS.ErrnoException).code === 'EMFILE') return
+      console.error('[FileWatcher] error:', err.message)
     })
 
     const eventTypes: FileChangeEvent['type'][] = ['add', 'change', 'unlink', 'addDir', 'unlinkDir']

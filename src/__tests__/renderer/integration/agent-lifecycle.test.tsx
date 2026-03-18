@@ -18,7 +18,7 @@ const mockFitAddon = vi.hoisted(() => ({
   dispose: vi.fn()
 }))
 
-vi.mock('xterm', () => ({
+vi.mock('@xterm/xterm', () => ({
   Terminal: function () {
     return mockTerminal
   }
@@ -45,8 +45,18 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   }
 }
 
-type StatusCb = (payload: { agentId: string; status: string; agent: AgentState }) => void
-type InputCb = (payload: { agentId: string; agentName: string; prompt?: string }) => void
+type StatusCb = (payload: {
+  agentId: string
+  status: string
+  agent: AgentState
+  tabId: string
+}) => void
+type InputCb = (payload: {
+  agentId: string
+  agentName: string
+  prompt?: string
+  tabId: string
+}) => void
 
 let capturedStatusCb: StatusCb | null = null
 let capturedInputCb: InputCb | null = null
@@ -73,6 +83,14 @@ const mockApi = {
     capturedInputCb = cb
     return vi.fn()
   }),
+  onTeammateSpawned: vi.fn().mockReturnValue(vi.fn()),
+  onTeammateExited: vi.fn().mockReturnValue(vi.fn()),
+  onTeammateRenamed: vi.fn().mockReturnValue(vi.fn()),
+  onTeammateStatus: vi.fn().mockReturnValue(vi.fn()),
+  onTeammateOutput: vi.fn().mockReturnValue(vi.fn()),
+  onTeamAutoStarted: vi.fn().mockReturnValue(vi.fn()),
+  onMenuTeamStart: vi.fn().mockReturnValue(vi.fn()),
+  onMenuTeamStop: vi.fn().mockReturnValue(vi.fn()),
   onFileChanged: vi.fn().mockReturnValue(vi.fn()),
   onFileTreeUpdate: vi.fn().mockReturnValue(vi.fn()),
   onGitStatusUpdate: vi.fn().mockReturnValue(vi.fn())
@@ -112,7 +130,8 @@ describe('Agent Lifecycle Integration', () => {
         capturedStatusCb?.({
           agentId: 'agent-1',
           status: 'running',
-          agent: agent1
+          agent: agent1,
+          tabId: 'tab-default'
         })
       })
 
@@ -127,7 +146,8 @@ describe('Agent Lifecycle Integration', () => {
         capturedStatusCb?.({
           agentId: 'agent-1',
           status: 'running',
-          agent: agent1
+          agent: agent1,
+          tabId: 'tab-default'
         })
       })
 
@@ -144,7 +164,8 @@ describe('Agent Lifecycle Integration', () => {
         capturedStatusCb?.({
           agentId: 'agent-1',
           status: 'running',
-          agent
+          agent,
+          tabId: 'tab-default'
         })
       })
 
@@ -155,45 +176,57 @@ describe('Agent Lifecycle Integration', () => {
         capturedStatusCb?.({
           agentId: 'agent-1',
           status: 'stopped',
-          agent: { ...agent, status: 'stopped' }
+          agent: { ...agent, status: 'stopped' },
+          tabId: 'tab-default'
         })
       })
 
       expect(within(listItem).getByTestId('status-badge')).toHaveClass('stopped')
     })
 
-    it('updates top bar status counts when agents change', async () => {
+    it('updates bottom bar status counts when agents change', async () => {
       const agent1 = makeAgent({ id: 'agent-1', status: 'running' })
       const agent2 = makeAgent({ id: 'agent-2', name: 'coder', status: 'running' })
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent: agent1 })
+        capturedStatusCb?.({
+          agentId: 'agent-1',
+          status: 'running',
+          agent: agent1,
+          tabId: 'tab-default'
+        })
       })
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-2', status: 'running', agent: agent2 })
+        capturedStatusCb?.({
+          agentId: 'agent-2',
+          status: 'running',
+          agent: agent2,
+          tabId: 'tab-default'
+        })
       })
 
-      const topbar = screen.getByTestId('topbar')
-      expect(within(topbar).getByText('2 running')).toBeInTheDocument()
+      const bottombar = screen.getByTestId('bottombar')
+      expect(within(bottombar).getByText('2 running')).toBeInTheDocument()
     })
   })
 
   describe('Input-needed → notification flow', () => {
-    it('shows notification badge when agent needs input', async () => {
+    it('marks agent as needs-input when input-needed event fires', async () => {
       const agent = makeAgent({ id: 'agent-1', name: 'architect' })
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent })
+        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent, tabId: 'tab-default' })
       })
 
       await act(async () => {
-        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect' })
+        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect', tabId: 'tab-default' })
       })
 
-      expect(screen.getByTestId('notification-badge')).toBeInTheDocument()
+      const listItem = screen.getByTestId('agent-list-item-agent-1')
+      expect(listItem).toHaveClass('needs-input')
     })
 
     it('applies needs-input class to agent list item', async () => {
@@ -201,11 +234,11 @@ describe('Agent Lifecycle Integration', () => {
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent })
+        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent, tabId: 'tab-default' })
       })
 
       await act(async () => {
-        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect' })
+        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect', tabId: 'tab-default' })
       })
 
       const listItem = screen.getByTestId('agent-list-item-agent-1')
@@ -217,11 +250,11 @@ describe('Agent Lifecycle Integration', () => {
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent })
+        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent, tabId: 'tab-default' })
       })
 
       await act(async () => {
-        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect' })
+        capturedInputCb?.({ agentId: 'agent-1', agentName: 'architect', tabId: 'tab-default' })
       })
 
       const pane = screen.getByTestId('terminal-pane-agent-1')
@@ -235,7 +268,7 @@ describe('Agent Lifecycle Integration', () => {
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent })
+        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent, tabId: 'tab-default' })
       })
       expect(screen.getByTestId('terminal-pane-agent-1')).toBeInTheDocument()
 
@@ -243,7 +276,8 @@ describe('Agent Lifecycle Integration', () => {
         capturedStatusCb?.({
           agentId: 'agent-1',
           status: 'stopped',
-          agent: { ...agent, status: 'stopped' }
+          agent: { ...agent, status: 'stopped' },
+          tabId: 'tab-default'
         })
       })
 

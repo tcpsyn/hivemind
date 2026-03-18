@@ -4,7 +4,11 @@ import AgentList from './AgentList'
 import FileTree from './FileTree'
 import './Sidebar.css'
 
-export default function Sidebar() {
+interface SidebarProps {
+  onAgentContextMenu?: (agentId: string, action: string) => void
+}
+
+export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
   const state = useAppState()
   const dispatch = useAppDispatch()
   const [agentsCollapsed, setAgentsCollapsed] = useState(false)
@@ -38,13 +42,13 @@ export default function Sidebar() {
     [dispatch]
   )
 
-  const collapsed = state.layout.sidebarCollapsed
+  const collapsed = state.globalLayout.sidebarCollapsed
 
   return (
     <div
       className={`sidebar${collapsed ? ' collapsed' : ''}`}
       data-testid="sidebar"
-      style={{ width: collapsed ? 'var(--sidebar-min-width)' : state.layout.sidebarWidth }}
+      style={{ width: collapsed ? 'var(--sidebar-min-width)' : state.globalLayout.sidebarWidth }}
     >
       <div className="sidebar-content">
         <div
@@ -60,7 +64,7 @@ export default function Sidebar() {
           </button>
           {!agentsCollapsed && (
             <div className="sidebar-section-body" data-testid="agents-placeholder">
-              <AgentList />
+              <AgentList onAgentContextMenu={onAgentContextMenu} />
             </div>
           )}
         </div>

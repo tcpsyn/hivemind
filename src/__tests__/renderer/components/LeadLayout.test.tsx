@@ -1,12 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { LeadLayout } from '../../../renderer/src/components/LeadLayout'
-import {
-  AppProvider,
-  type ExtendedAppState,
-  initialAppState
-} from '../../../renderer/src/state/AppContext'
-import type { AgentState } from '../../../shared/types'
+import { AppProvider, initialAppState } from '../../../renderer/src/state/AppContext'
+import type { AgentState, AppState } from '../../../shared/types'
 
 vi.mock('../../../renderer/src/components/TerminalPane', () => ({
   TerminalPane: ({ agent }: { agent: AgentState }) => (
@@ -57,21 +53,24 @@ function makeState(
   leadId: string | null,
   agents: AgentState[],
   companionCollapsed = false
-): ExtendedAppState {
+): AppState {
   const agentsMap = new Map<string, AgentState>()
   for (const a of agents) {
     agentsMap.set(a.id, a)
   }
-  return {
-    ...initialAppState,
+  const defaultTab = initialAppState.tabs.get('tab-default')!
+  const tabs = new Map(initialAppState.tabs)
+  tabs.set('tab-default', {
+    ...defaultTab,
     agents: agentsMap,
     layout: {
-      ...initialAppState.layout,
+      ...defaultTab.layout,
       viewMode: 'lead',
       teamLeadId: leadId,
       companionPanelCollapsed: companionCollapsed
     }
-  }
+  })
+  return { ...initialAppState, tabs }
 }
 
 beforeEach(() => {

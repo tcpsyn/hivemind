@@ -25,7 +25,6 @@ export class TeamSession extends EventEmitter {
   private running = false
   private signalHandlers: { event: string; handler: () => void }[] = []
   private realTmuxPath: string
-  private idCounter = 0
 
   constructor(sessionName: string, projectPath: string, ptyManager?: PtyManager) {
     super()
@@ -80,7 +79,12 @@ export class TeamSession extends EventEmitter {
 
     // Disable tmux status bar — we show agent info in the app UI instead
     await execFileAsync(this.realTmuxPath, [
-      '-L', this.tmuxSocketName, 'set-option', '-g', 'status', 'off'
+      '-L',
+      this.tmuxSocketName,
+      'set-option',
+      '-g',
+      'status',
+      'off'
     ])
 
     // Get the TMUX env var value (socket_path,server_pid,session_idx)
@@ -94,10 +98,23 @@ export class TeamSession extends EventEmitter {
       '#{socket_path},#{pid},0'
     ])
 
+    // Query the actual lead pane ID instead of assuming %0
+    const { stdout: leadPaneOut } = await execFileAsync(this.realTmuxPath, [
+      '-L',
+      this.tmuxSocketName,
+      'list-panes',
+      '-t',
+      this.sessionName,
+      '-F',
+      '#{pane_id}'
+    ])
+    const leadPaneId = leadPaneOut.trim().split('\n')[0] || '%0'
+
     this.proxyServer = new TmuxProxyServer(this.socketPath, this.realTmuxPath, {
       pollIntervalMs: 2000,
       tmuxSocketName: this.tmuxSocketName,
-      leadSessionName: this.sessionName
+      leadSessionName: this.sessionName,
+      leadPaneId
     })
     await this.proxyServer.start()
 
@@ -125,6 +142,10 @@ export class TeamSession extends EventEmitter {
 
     this.removeSignalHandlers()
 
+    // Destroy teammate PTYs before clearing the maps
+    for (const [agentId] of this.teammates) {
+      this.ptyManager.destroyPty(agentId)
+    }
     this.teammates.clear()
     this.paneIdToAgentId.clear()
 
@@ -238,23 +259,35 @@ export class TeamSession extends EventEmitter {
       this.emit('teammate-output', paneId, data.toString())
     })
 
-    this.proxyServer.on('teammate-status-update', (info: { paneId: string; model?: string; contextPercent?: string; branch?: string; project?: string }) => {
-      const agentId = this.paneIdToAgentId.get(info.paneId)
-      if (agentId) {
-        this.emit('teammate-status-update', agentId, info)
-      }
-    })
-
-    this.proxyServer.on('teammate-renamed', ({ paneId, name }: { paneId: string; name: string }) => {
-      const agentId = this.paneIdToAgentId.get(paneId)
-      if (agentId) {
-        const agent = this.teammates.get(agentId)
-        if (agent) {
-          agent.name = name
-          this.emit('teammate-renamed', agentId, name, paneId)
+    this.proxyServer.on(
+      'teammate-status-update',
+      (info: {
+        paneId: string
+        model?: string
+        contextPercent?: string
+        branch?: string
+        project?: string
+      }) => {
+        const agentId = this.paneIdToAgentId.get(info.paneId)
+        if (agentId) {
+          this.emit('teammate-status-update', agentId, info)
         }
       }
-    })
+    )
+
+    this.proxyServer.on(
+      'teammate-renamed',
+      ({ paneId, name }: { paneId: string; name: string }) => {
+        const agentId = this.paneIdToAgentId.get(paneId)
+        if (agentId) {
+          const agent = this.teammates.get(agentId)
+          if (agent) {
+            agent.name = name
+            this.emit('teammate-renamed', agentId, name, paneId)
+          }
+        }
+      }
+    )
 
     this.proxyServer.on('teammate-exited', ({ paneId }: { paneId: string }) => {
       const agentId = this.paneIdToAgentId.get(paneId)
@@ -268,6 +301,14 @@ export class TeamSession extends EventEmitter {
 
     this.proxyServer.on('error', (err: Error) => {
       this.emit('error', err)
+    })
+
+    this.proxyServer.on('server-error', (info: { failures: number; message: string }) => {
+      this.emit('server-error', info)
+    })
+
+    this.proxyServer.on('server-recovered', () => {
+      this.emit('server-recovered')
     })
   }
 

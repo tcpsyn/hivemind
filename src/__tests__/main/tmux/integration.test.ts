@@ -4,7 +4,7 @@ import * as crypto from 'crypto'
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs'
-import { FakeTmuxServer } from '../../../main/tmux/FakeTmuxServer'
+import { FakeTmuxServer } from '../../helpers/FakeTmuxServer'
 import type { TmuxRequest, TmuxResponse } from '../../../shared/tmux-types'
 
 function makeRequest(

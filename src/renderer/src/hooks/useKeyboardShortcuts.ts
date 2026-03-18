@@ -1,95 +1,132 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
 import type { ActiveTab } from '../../../shared/types'
 
-const TAB_ORDER: ActiveTab[] = ['agents', 'editor', 'git']
+const FEATURE_TAB_ORDER: ActiveTab[] = ['agents', 'editor', 'git']
 
 interface KeyboardShortcutOptions {
   onQuickOpen?: () => void
+  onNewTab?: () => void
+  onCloseTab?: (tabId: string, teamRunning: boolean) => void
 }
 
-export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
+export function useKeyboardShortcuts({
+  onQuickOpen,
+  onNewTab,
+  onCloseTab
+}: KeyboardShortcutOptions = {}) {
   const state = useAppState()
   const dispatch = useAppDispatch()
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
+  // Use a ref to always read latest state without rebuilding the handler
+  const stateRef = useRef(state)
+  stateRef.current = state
 
-      if (mod && e.key === 'b') {
+  const callbacksRef = useRef({ onQuickOpen, onNewTab, onCloseTab })
+  callbacksRef.current = { onQuickOpen, onNewTab, onCloseTab }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      const s = stateRef.current
+      const cbs = callbacksRef.current
+
+      // Cmd+B: toggle sidebar
+      if (mod && !e.shiftKey && e.key === 'b') {
         e.preventDefault()
         dispatch({ type: 'TOGGLE_SIDEBAR' })
         return
       }
 
+      // Cmd+Tab: cycle feature tabs (agents → editor → git)
       if (mod && e.key === 'Tab') {
         e.preventDefault()
-        const currentIndex = TAB_ORDER.indexOf(state.layout.activeTab)
-        const nextIndex = (currentIndex + 1) % TAB_ORDER.length
-        dispatch({ type: 'SET_ACTIVE_TAB', payload: TAB_ORDER[nextIndex] })
+        const currentIndex = FEATURE_TAB_ORDER.indexOf(s.activeFeatureTab)
+        const nextIndex = (currentIndex + 1) % FEATURE_TAB_ORDER.length
+        dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: FEATURE_TAB_ORDER[nextIndex] })
         return
       }
 
-      if (mod && e.key === 'w') {
+      // Cmd+T: new tab
+      if (mod && !e.shiftKey && e.key === 't') {
         e.preventDefault()
-        if (state.editor.activeFileId) {
-          dispatch({ type: 'CLOSE_EDITOR_TAB', payload: state.editor.activeFileId })
+        cbs.onNewTab?.()
+        return
+      }
+
+      // Cmd+W: close current project tab
+      if (mod && !e.shiftKey && e.key === 'w') {
+        e.preventDefault()
+        const activeTab = s.tabs.get(s.activeTabId)
+        if (activeTab) {
+          cbs.onCloseTab?.(s.activeTabId, activeTab.teamStatus === 'running')
         }
         return
       }
 
-      if (mod && e.key === 'p') {
+      // Cmd+P: quick open
+      if (mod && !e.shiftKey && e.key === 'p') {
         e.preventDefault()
-        options.onQuickOpen?.()
+        cbs.onQuickOpen?.()
         return
       }
 
-      if (mod && e.key === 'g') {
+      // Cmd+G: toggle view mode
+      if (mod && !e.shiftKey && e.key === 'g') {
         e.preventDefault()
-        dispatch({
-          type: 'SET_VIEW_MODE',
-          payload: state.layout.viewMode === 'lead' ? 'grid' : 'lead'
-        })
+        const activeTab = s.tabs.get(s.activeTabId)
+        if (activeTab) {
+          dispatch({
+            type: 'SET_VIEW_MODE',
+            payload: activeTab.layout.viewMode === 'lead' ? 'grid' : 'lead',
+            tabId: s.activeTabId
+          })
+        }
         return
       }
 
+      // Cmd+\: toggle companion panel
       if (mod && e.key === '\\') {
         e.preventDefault()
-        dispatch({ type: 'TOGGLE_COMPANION' })
+        dispatch({ type: 'TOGGLE_COMPANION', tabId: s.activeTabId })
         return
       }
 
-      if (mod && e.key >= '1' && e.key <= '4') {
+      // Cmd+Shift+[ / Cmd+Shift+]: previous / next project tab
+      if (mod && e.shiftKey && (e.key === '[' || e.key === ']')) {
         e.preventDefault()
-        const index = parseInt(e.key, 10) - 1
-        const agents = Array.from(state.agents.values())
-        if (index < agents.length) {
-          dispatch({ type: 'MAXIMIZE_PANE', payload: agents[index].id })
+        const { tabOrder } = s.globalLayout
+        const currentIndex = tabOrder.indexOf(s.activeTabId)
+        if (currentIndex === -1) return
+        const delta = e.key === '[' ? -1 : 1
+        const nextIndex = (currentIndex + delta + tabOrder.length) % tabOrder.length
+        dispatch({ type: 'SET_ACTIVE_PROJECT_TAB', payload: tabOrder[nextIndex] })
+        return
+      }
+
+      // Cmd+1-9: switch to project tab by position (Cmd+9 = last)
+      if (mod && !e.shiftKey && e.key >= '1' && e.key <= '9') {
+        e.preventDefault()
+        const { tabOrder } = s.globalLayout
+        const index = e.key === '9' ? tabOrder.length - 1 : parseInt(e.key, 10) - 1
+        if (index < tabOrder.length) {
+          dispatch({ type: 'SET_ACTIVE_PROJECT_TAB', payload: tabOrder[index] })
         }
         return
       }
 
+      // Escape: restore maximized pane
       if (e.key === 'Escape') {
-        if (state.layout.maximizedPaneId) {
+        const activeTab = s.tabs.get(s.activeTabId)
+        if (activeTab?.layout.maximizedPaneId) {
           e.preventDefault()
-          dispatch({ type: 'RESTORE_PANE' })
+          dispatch({ type: 'RESTORE_PANE', tabId: s.activeTabId })
         }
         return
       }
-    },
-    [
-      dispatch,
-      state.layout.activeTab,
-      state.layout.viewMode,
-      state.editor.activeFileId,
-      state.layout.maximizedPaneId,
-      state.agents,
-      options
-    ]
-  )
+    }
 
-  useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
+  }, [dispatch])
 }

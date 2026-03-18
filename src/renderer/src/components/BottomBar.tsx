@@ -1,21 +1,21 @@
-import { useAppState } from '../state/AppContext'
+import { useActiveTab } from '../state/AppContext'
 import type { AgentStatus } from '../../../shared/types'
 import './BottomBar.css'
 
 export default function BottomBar() {
-  const state = useAppState()
+  const tab = useActiveTab()
 
   const statusCounts = new Map<AgentStatus, number>()
   let lastActivity = 0
 
-  for (const agent of state.agents.values()) {
+  for (const agent of tab.agents.values()) {
     statusCounts.set(agent.status, (statusCounts.get(agent.status) || 0) + 1)
     if (agent.lastActivity > lastActivity) {
       lastActivity = agent.lastActivity
     }
   }
 
-  const hasAgents = state.agents.size > 0
+  const hasAgents = tab.agents.size > 0
 
   const summaryParts: string[] = []
   if (statusCounts.get('running')) summaryParts.push(`${statusCounts.get('running')} running`)

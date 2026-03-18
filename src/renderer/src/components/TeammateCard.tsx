@@ -87,7 +87,9 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
           </div>
           <span className="teammate-card-type">
             {agent.model || agent.agentType || agent.role}
-            {agent.contextPercent && <span className="teammate-context"> {agent.contextPercent}</span>}
+            {agent.contextPercent && (
+              <span className="teammate-context"> {agent.contextPercent}</span>
+            )}
           </span>
         </div>
       </div>

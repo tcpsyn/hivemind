@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GitService } from '../../../main/services/GitService'
-import type { GitFileStatus } from '../../../shared/types'
-
 // Mock simple-git
 const mockGit = {
   status: vi.fn(),
@@ -118,88 +116,6 @@ describe('GitService', () => {
       mockGit.diff.mockResolvedValue('staged diff output')
       await service.getDiff('file.ts', true)
       expect(mockGit.diff).toHaveBeenCalledWith(['--cached', '--', 'file.ts'])
-    })
-  })
-
-  describe('getFileStatus', () => {
-    it('returns status for a modified file', async () => {
-      mockGit.status.mockResolvedValue({
-        files: [{ path: 'src/index.ts', index: 'M', working_dir: ' ' }],
-        modified: ['src/index.ts'],
-        not_added: [],
-        deleted: [],
-        created: [],
-        renamed: [],
-        current: 'main',
-        ahead: 0,
-        behind: 0
-      })
-
-      const status = await service.getFileStatus('src/index.ts')
-      expect(status).toBe('modified')
-    })
-
-    it('returns null for untracked file not in status', async () => {
-      mockGit.status.mockResolvedValue({
-        files: [],
-        modified: [],
-        not_added: [],
-        deleted: [],
-        created: [],
-        renamed: [],
-        current: 'main',
-        ahead: 0,
-        behind: 0
-      })
-
-      const status = await service.getFileStatus('clean-file.ts')
-      expect(status).toBeNull()
-    })
-
-    it('returns untracked for new files', async () => {
-      mockGit.status.mockResolvedValue({
-        files: [{ path: 'new.ts', index: '?', working_dir: '?' }],
-        modified: [],
-        not_added: ['new.ts'],
-        deleted: [],
-        created: [],
-        renamed: [],
-        current: 'main',
-        ahead: 0,
-        behind: 0
-      })
-
-      const status = await service.getFileStatus('new.ts')
-      expect(status).toBe('untracked')
-    })
-  })
-
-  describe('mapIndexToStatus', () => {
-    it('maps git index codes to GitFileStatus', async () => {
-      const cases: Array<[string, GitFileStatus]> = [
-        ['M', 'modified'],
-        ['A', 'added'],
-        ['D', 'deleted'],
-        ['R', 'renamed'],
-        ['?', 'untracked']
-      ]
-
-      for (const [index, expected] of cases) {
-        mockGit.status.mockResolvedValue({
-          files: [{ path: 'test.ts', index, working_dir: ' ' }],
-          modified: index === 'M' ? ['test.ts'] : [],
-          not_added: index === '?' ? ['test.ts'] : [],
-          deleted: index === 'D' ? ['test.ts'] : [],
-          created: index === 'A' ? ['test.ts'] : [],
-          renamed: index === 'R' ? [{ from: 'old.ts', to: 'test.ts' }] : [],
-          current: 'main',
-          ahead: 0,
-          behind: 0
-        })
-
-        const status = await service.getFileStatus('test.ts')
-        expect(status).toBe(expected)
-      }
     })
   })
 

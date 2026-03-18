@@ -38,7 +38,7 @@ function getFileIcon(name: string): string {
     case 'css':
       return '◆'
     case 'html':
-      return '◇'
+      return '◁'
     default:
       return '○'
   }

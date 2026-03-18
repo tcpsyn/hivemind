@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAppState } from '../state/AppContext'
+import { useActiveTab } from '../state/AppContext'
 import { useEditor } from '../hooks/useEditor'
 import EditorTabBar from './EditorTabBar'
 import MonacoEditor from './MonacoEditor'
@@ -7,8 +7,8 @@ import DiffView from './DiffView'
 import './EditorView.css'
 
 export default function EditorView() {
-  const state = useAppState()
-  const { openFiles, activeFileId } = state.editor
+  const tab = useActiveTab()
+  const { openFiles, activeFileId } = tab.editor
   const activeTab = openFiles.find((f) => f.id === activeFileId) ?? null
   const [showDiff, setShowDiff] = useState(false)
 

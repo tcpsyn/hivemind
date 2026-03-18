@@ -1,63 +1,196 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useAppState, useAppDispatch } from '../state/AppContext'
-import type { ActiveTab, AgentStatus } from '../../../shared/types'
+import type { ActiveTab, TeamStatus } from '../../../shared/types'
 import './TopBar.css'
 
-const TABS: { label: string; value: ActiveTab }[] = [
+const FEATURE_TABS: { label: string; value: ActiveTab }[] = [
   { label: 'Agents', value: 'agents' },
   { label: 'Editor', value: 'editor' },
   { label: 'Git', value: 'git' }
 ]
 
+const STATUS_DOT_COLOR: Record<TeamStatus, string> = {
+  running: 'var(--status-running)',
+  starting: 'var(--status-waiting)',
+  stopped: 'var(--status-idle)'
+}
+
 export default function TopBar() {
   const state = useAppState()
   const dispatch = useAppDispatch()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const plusRef = useRef<HTMLButtonElement>(null)
 
-  const statusCounts = new Map<AgentStatus, number>()
-  for (const agent of state.agents.values()) {
-    statusCounts.set(agent.status, (statusCounts.get(agent.status) || 0) + 1)
-  }
+  useEffect(() => {
+    if (!menuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        plusRef.current &&
+        !plusRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuOpen])
 
-  const unreadCount = state.notifications.filter((n) => !n.read).length
+  const switchTab = useCallback(
+    (tabId: string) => {
+      dispatch({ type: 'SET_ACTIVE_PROJECT_TAB', payload: tabId })
+    },
+    [dispatch]
+  )
+
+  const closeTab = useCallback(
+    (e: React.MouseEvent, tabId: string) => {
+      e.stopPropagation()
+      const tab = state.tabs.get(tabId)
+      if (tab && tab.teamStatus === 'running') {
+        if (!window.confirm(`Team is running in "${tab.projectName}". Close tab?`)) return
+      }
+      dispatch({ type: 'CLOSE_TAB', payload: tabId })
+    },
+    [dispatch, state.tabs]
+  )
+
+  const openRecent = useCallback(
+    async (projectPath: string) => {
+      setMenuOpen(false)
+      const tab = await window.api.tabCreate({ projectPath })
+      dispatch({
+        type: 'CREATE_TAB',
+        payload: { id: tab.tabId, projectPath: tab.projectPath, projectName: tab.projectName }
+      })
+      dispatch({ type: 'ADD_RECENT_PROJECT', payload: projectPath })
+      const result = await window.api.teamStart({
+        tabId: tab.tabId,
+        config: { name: tab.projectName, project: projectPath, agents: [] }
+      })
+      for (const agent of result.agents) {
+        dispatch({ type: 'ADD_AGENT', payload: agent, tabId: tab.tabId })
+      }
+      if (result.agents.length > 0) {
+        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId: tab.tabId })
+      }
+      dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId: tab.tabId })
+    },
+    [dispatch]
+  )
+
+  const openFolder = useCallback(async () => {
+    setMenuOpen(false)
+    const folderPath = await window.api.openFolderDialog()
+    if (folderPath) {
+      // Create tab in main process (gets PtyManager, FileService, etc.)
+      const tab = await window.api.tabCreate({ projectPath: folderPath })
+      // Create tab in renderer state
+      dispatch({
+        type: 'CREATE_TAB',
+        payload: { id: tab.tabId, projectPath: tab.projectPath, projectName: tab.projectName }
+      })
+      dispatch({ type: 'ADD_RECENT_PROJECT', payload: folderPath })
+      // Auto-start a team session in the new tab
+      const result = await window.api.teamStart({
+        tabId: tab.tabId,
+        config: { name: tab.projectName, project: folderPath, agents: [] }
+      })
+      for (const agent of result.agents) {
+        dispatch({ type: 'ADD_AGENT', payload: agent, tabId: tab.tabId })
+      }
+      if (result.agents.length > 0) {
+        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId: tab.tabId })
+      }
+      dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId: tab.tabId })
+    }
+  }, [dispatch])
+
+  const orderedTabs = state.globalLayout.tabOrder
+    .map((id) => state.tabs.get(id))
+    .filter((t): t is NonNullable<typeof t> => t != null)
 
   return (
     <div className="topbar" data-testid="topbar">
-      <div className="topbar-left">
-        <span className="topbar-project-name">{state.project.name}</span>
-        <span className="topbar-project-path">{state.project.path}</span>
+      <div className="topbar-project-tabs">
+        <div className="project-tabs-scroll">
+          {orderedTabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`project-tab${state.activeTabId === tab.id ? ' active' : ''}`}
+              onClick={() => switchTab(tab.id)}
+              title={tab.projectPath}
+              data-testid={`project-tab-${tab.id}`}
+            >
+              <span
+                className="project-tab-status"
+                data-testid="status-dot"
+                data-status={tab.teamStatus}
+                style={{ backgroundColor: STATUS_DOT_COLOR[tab.teamStatus] }}
+              />
+              <span className="project-tab-name">{tab.projectName || 'New Tab'}</span>
+              <span
+                className="project-tab-close"
+                onClick={(e) => closeTab(e, tab.id)}
+                role="button"
+                tabIndex={-1}
+                aria-label={`Close ${tab.projectName}`}
+              >
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="new-tab-container">
+          <button
+            ref={plusRef}
+            className="new-tab-btn"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="New tab"
+            data-testid="new-tab-button"
+          >
+            +
+          </button>
+          {menuOpen && (
+            <div ref={menuRef} className="new-tab-menu" data-testid="new-tab-menu">
+              {state.recentProjects.length > 0 && (
+                <>
+                  <div className="new-tab-menu-label">Recent Projects</div>
+                  {state.recentProjects.slice(0, 5).map((path) => (
+                    <button
+                      key={path}
+                      className="new-tab-menu-item"
+                      onClick={() => openRecent(path)}
+                    >
+                      <span className="new-tab-menu-item-name">{path.split('/').pop()}</span>
+                      <span className="new-tab-menu-item-path">{path}</span>
+                    </button>
+                  ))}
+                  <div className="new-tab-menu-divider" />
+                </>
+              )}
+              <button className="new-tab-menu-item" onClick={openFolder}>
+                Open folder…
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="topbar-center">
-        {TABS.map((tab) => (
+      <div className="topbar-drag-spacer" />
+
+      <div className="topbar-feature-tabs">
+        {FEATURE_TABS.map((tab) => (
           <button
             key={tab.value}
-            className={`topbar-tab${state.layout.activeTab === tab.value ? ' active' : ''}`}
-            onClick={() => dispatch({ type: 'SET_ACTIVE_TAB', payload: tab.value })}
+            className={`topbar-tab${state.activeFeatureTab === tab.value ? ' active' : ''}`}
+            onClick={() => dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: tab.value })}
           >
             {tab.label}
           </button>
         ))}
-      </div>
-
-      <div className="topbar-right">
-        <div className="topbar-status">
-          {statusCounts.get('running') && (
-            <span className="status-count running">{statusCounts.get('running')} running</span>
-          )}
-          {statusCounts.get('idle') && (
-            <span className="status-count idle">{statusCounts.get('idle')} idle</span>
-          )}
-          {statusCounts.get('waiting') && (
-            <span className="status-count waiting">{statusCounts.get('waiting')} waiting</span>
-          )}
-          {statusCounts.get('stopped') && (
-            <span className="status-count stopped">{statusCounts.get('stopped')} stopped</span>
-          )}
-        </div>
-        {unreadCount > 0 && (
-          <span className="notification-badge" data-testid="notification-badge">
-            {unreadCount}
-          </span>
-        )}
       </div>
     </div>
   )

@@ -13,7 +13,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
       include: ['src/main/**', 'src/renderer/src/**', 'src/shared/**', 'src/preload/**'],
-      exclude: ['src/__tests__/**', '**/*.d.ts']
+      exclude: ['src/__tests__/**', '**/*.d.ts', '**/*.css']
     }
   }
 })

@@ -606,6 +606,248 @@ describe('TmuxProxyServer', () => {
     })
   })
 
+  describe('parseClaudeStatus', () => {
+    it('parses a standard Claude Code status line', async () => {
+      createServer({ leadSessionName: 'main' })
+
+      // Access private method via prototype
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const output = '  cc_frontend  Opus 4.6  [████████████] 11%  ⌞ feature/branch\n'
+      const result = parseStatus(output)
+
+      expect(result).toBeDefined()
+      expect(result.model).toBe('Opus 4.6')
+      expect(result.contextPercent).toBe('11%')
+      expect(result.project).toBe('cc_frontend')
+      expect(result.branch).toBe('feature/branch')
+    })
+
+    it('parses Sonnet model', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const output = '  myproject  Sonnet 4.6  [██] 3%  ⌞ main\n'
+      const result = parseStatus(output)
+
+      expect(result).toBeDefined()
+      expect(result.model).toBe('Sonnet 4.6')
+      expect(result.contextPercent).toBe('3%')
+    })
+
+    it('parses Haiku model', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const output = '  app  Haiku 4.5  [█] 1%  ⌞ develop\n'
+      const result = parseStatus(output)
+
+      expect(result).toBeDefined()
+      expect(result.model).toBe('Haiku 4.5')
+    })
+
+    it('returns null when no model pattern found', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const result = parseStatus('some random terminal output\n')
+      expect(result).toBeNull()
+    })
+
+    it('returns null for empty output', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      expect(parseStatus('')).toBeNull()
+      expect(parseStatus('\n\n')).toBeNull()
+    })
+
+    it('handles status line without branch', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const output = '  project  Opus 4.6  [████] 25%\n'
+      const result = parseStatus(output)
+
+      expect(result).toBeDefined()
+      expect(result.model).toBe('Opus 4.6')
+      expect(result.contextPercent).toBe('25%')
+    })
+
+    it('handles multi-line output and finds status on any line', async () => {
+      createServer({ leadSessionName: 'main' })
+      const parseStatus = (server as any).parseClaudeStatus.bind(server)
+
+      const output = 'some output\nother stuff\n  app  Sonnet 4.6  [██████] 50%  ⌞ main\n'
+      const result = parseStatus(output)
+
+      expect(result).toBeDefined()
+      expect(result.model).toBe('Sonnet 4.6')
+      expect(result.contextPercent).toBe('50%')
+    })
+  })
+
+  describe('handleSendKeysNotification', () => {
+    it('extracts agent name from send-keys args and emits teammate-renamed', async () => {
+      createServer({ leadSessionName: 'main' })
+
+      // Discover a pane first
+      mockExec.mockResolvedValue({
+        stdout: '%1|1234|worker|/dev/ttys001|main\n',
+        stderr: ''
+      })
+      await server.discoverPanes()
+
+      const renamed: { paneId: string; name: string }[] = []
+      server.on('teammate-renamed', (data: { paneId: string; name: string }) => renamed.push(data))
+
+      // Simulate send-keys notification with --agent-name via the server's notification handler
+      await server.start()
+      await sendNotification(socketPath, {
+        event: 'tmux-command',
+        command: 'send-keys',
+        args: ['-t', '%1', 'claude --agent-name researcher', 'Enter'],
+        exitCode: 0
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(renamed).toHaveLength(1)
+      expect(renamed[0]).toMatchObject({ paneId: '%1', name: 'researcher' })
+    })
+
+    it('does not emit when no --agent-name in send-keys args', async () => {
+      createServer({ leadSessionName: 'main' })
+      await server.start()
+
+      const renamed: unknown[] = []
+      server.on('teammate-renamed', (data: unknown) => renamed.push(data))
+
+      await sendNotification(socketPath, {
+        event: 'tmux-command',
+        command: 'send-keys',
+        args: ['-t', '%1', 'ls -la', 'Enter'],
+        exitCode: 0
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(renamed).toHaveLength(0)
+    })
+  })
+
+  describe('new-session captures session name', () => {
+    it('captures lead session name from new-session -s flag', async () => {
+      createServer() // No leadSessionName initially
+      await server.start()
+
+      // After new-session with -s, discovery should use that session name
+      mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
+        if (args.includes('list-panes')) {
+          return { stdout: '%1|1234|worker|/dev/ttys001|my-session\n', stderr: '' }
+        }
+        return { stdout: '', stderr: '' }
+      })
+
+      const detected = waitForEvent<ProxyPaneInfo>(server, 'teammate-detected')
+
+      await sendNotification(socketPath, {
+        event: 'tmux-command',
+        command: 'new-session',
+        args: ['-d', '-s', 'my-session', '-x', '80', '-y', '24'],
+        exitCode: 0
+      })
+
+      // new-session is a pane-mutating command, so discoverPanes should be called
+      // and it should now use 'my-session' as the session filter
+      const info = await detected
+      expect(info.sessionName).toBe('my-session')
+    })
+  })
+
+  describe('resizePane', () => {
+    it('calls tmux resize-window with correct args', async () => {
+      createServer()
+      mockExec.mockResolvedValue({ stdout: '', stderr: '' })
+
+      await server.resizePane('%1', 120, 40)
+
+      expect(mockExec).toHaveBeenCalledWith('/usr/bin/tmux', [
+        'resize-pane',
+        '-t',
+        '%1',
+        '-x',
+        '120',
+        '-y',
+        '40'
+      ])
+    })
+
+    it('does not throw when resize fails', async () => {
+      createServer()
+      mockExec.mockRejectedValue(new Error('resize failed'))
+
+      await expect(server.resizePane('%1', 120, 40)).resolves.not.toThrow()
+    })
+  })
+
+  describe('tmuxSocketName argument forwarding', () => {
+    it('prepends -L socketName to all tmux commands', async () => {
+      server = new TmuxProxyServer(socketPath, '/usr/bin/tmux', {
+        execCommand: mockExec,
+        leadPaneId: '%0',
+        leadSessionName: 'main',
+        pollIntervalMs: 0,
+        tmuxSocketName: 'hivemind-test'
+      })
+
+      mockExec.mockResolvedValue({ stdout: '', stderr: '' })
+      await server.discoverPanes()
+
+      expect(mockExec).toHaveBeenCalledWith(
+        '/usr/bin/tmux',
+        expect.arrayContaining(['-L', 'hivemind-test', 'list-panes'])
+      )
+    })
+  })
+
+  describe('startPaneStreaming', () => {
+    it('calls pipe-pane to start streaming output', async () => {
+      createServer({ leadSessionName: 'main' })
+      mockExec.mockResolvedValue({ stdout: '', stderr: '' })
+
+      await server.startPaneStreaming('%1')
+
+      // pipe-pane call should be present
+      const pipePaneCalls = mockExec.mock.calls.filter(
+        ([, args]) => Array.isArray(args) && args.includes('pipe-pane')
+      )
+      expect(pipePaneCalls).toHaveLength(1)
+      expect(pipePaneCalls[0][1]).toContain('-t')
+      expect(pipePaneCalls[0][1]).toContain('%1')
+    })
+
+    it('falls back to capture-pane polling when pipe-pane fails', async () => {
+      createServer({ leadSessionName: 'main' })
+
+      mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
+        if (Array.isArray(args) && args.includes('pipe-pane')) {
+          throw new Error('pipe-pane not supported')
+        }
+        return { stdout: '', stderr: '' }
+      })
+
+      await server.startPaneStreaming('%1')
+
+      // Should not throw, and should set up capture-pane polling instead
+      // Wait for at least one capture-pane poll
+      await new Promise((resolve) => setTimeout(resolve, 600))
+
+      const captureInvocations = mockExec.mock.calls.filter(
+        ([, args]) => Array.isArray(args) && args.includes('capture-pane')
+      )
+      expect(captureInvocations.length).toBeGreaterThanOrEqual(1)
+    })
+  })
+
   describe('stop cleanup', () => {
     it('clears known panes on stop', async () => {
       createServer({ leadSessionName: 'main' })

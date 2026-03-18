@@ -4,6 +4,8 @@ import { AppProvider, useAppDispatch } from '../../../renderer/src/state/AppCont
 import BottomBar from '../../../renderer/src/components/BottomBar'
 import type { AgentState } from '../../../shared/types'
 
+const TAB_ID = 'tab-default'
+
 function renderBottomBar() {
   return render(
     <AppProvider>
@@ -63,7 +65,7 @@ describe('BottomBar', () => {
           lastActivity: Date.now()
         }
       ]
-      agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a }))
+      agents.forEach((a) => dispatch({ type: 'ADD_AGENT', payload: a, tabId: TAB_ID }))
       return <BottomBar />
     }
     render(
@@ -87,6 +89,7 @@ describe('BottomBar', () => {
       const dispatch = useAppDispatch()
       dispatch({
         type: 'ADD_AGENT',
+        tabId: TAB_ID,
         payload: {
           id: '1',
           name: 'a',

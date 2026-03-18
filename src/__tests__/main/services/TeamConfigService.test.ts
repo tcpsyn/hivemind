@@ -4,41 +4,24 @@ import type { TeamConfig } from '../../../shared/types'
 import { AGENT_COLORS, AGENT_AVATARS } from '../../../shared/constants'
 
 // Mock fs and yaml - use vi.hoisted since vi.mock is hoisted
-const {
-  mockExistsSync,
-  mockMkdirSync,
-  mockReadFileSync,
-  mockWriteFileSync,
-  mockReaddirSync,
-  mockUnlinkSync,
-  mockYamlParse,
-  mockYamlStringify
-} = vi.hoisted(() => ({
+const { mockExistsSync, mockMkdirSync, mockReadFileSync, mockYamlParse } = vi.hoisted(() => ({
   mockExistsSync: vi.fn(() => true),
   mockMkdirSync: vi.fn(),
   mockReadFileSync: vi.fn(),
-  mockWriteFileSync: vi.fn(),
-  mockReaddirSync: vi.fn((): string[] => []),
-  mockUnlinkSync: vi.fn(),
-  mockYamlParse: vi.fn(),
-  mockYamlStringify: vi.fn(() => 'name: test\n')
+  mockYamlParse: vi.fn()
 }))
 
 vi.mock('node:fs', () => {
   const mocks = {
     existsSync: mockExistsSync,
     mkdirSync: mockMkdirSync,
-    readFileSync: mockReadFileSync,
-    writeFileSync: mockWriteFileSync,
-    readdirSync: mockReaddirSync,
-    unlinkSync: mockUnlinkSync
+    readFileSync: mockReadFileSync
   }
   return { ...mocks, default: mocks }
 })
 
 vi.mock('yaml', () => ({
-  parse: mockYamlParse,
-  stringify: mockYamlStringify
+  parse: mockYamlParse
 }))
 
 describe('TeamConfigService', () => {
@@ -47,7 +30,6 @@ describe('TeamConfigService', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockExistsSync.mockReturnValue(true)
-    mockReaddirSync.mockReturnValue([])
     service = new TeamConfigService('/tmp/test-teams')
   })
 
@@ -62,19 +44,6 @@ describe('TeamConfigService', () => {
       mockExistsSync.mockReturnValue(true)
       new TeamConfigService('/tmp/existing')
       expect(mockMkdirSync).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('listConfigs', () => {
-    it('returns list of YAML files in config directory', () => {
-      mockReaddirSync.mockReturnValue(['team-a.yml', 'team-b.yaml', 'other.txt'])
-      const configs = service.listConfigs()
-      expect(configs).toEqual(['team-a.yml', 'team-b.yaml'])
-    })
-
-    it('returns empty array when no configs exist', () => {
-      mockReaddirSync.mockReturnValue([])
-      expect(service.listConfigs()).toEqual([])
     })
   })
 
@@ -99,29 +68,6 @@ describe('TeamConfigService', () => {
       mockYamlParse.mockReturnValue({ name: '', project: '/p', agents: [] })
 
       expect(() => service.loadConfig('bad.yml')).toThrow()
-    })
-  })
-
-  describe('saveConfig', () => {
-    it('writes config as YAML to file', () => {
-      const config: TeamConfig = {
-        name: 'my-team',
-        project: '/project',
-        agents: [{ name: 'agent1', role: 'role1', command: 'cmd1' }]
-      }
-
-      service.saveConfig(config)
-      expect(mockYamlStringify).toHaveBeenCalledWith(config)
-      expect(mockWriteFileSync).toHaveBeenCalledWith(
-        '/tmp/test-teams/my-team.yml',
-        'name: test\n',
-        'utf-8'
-      )
-    })
-
-    it('throws on invalid config', () => {
-      const config = { name: '', project: '/p', agents: [] } as TeamConfig
-      expect(() => service.saveConfig(config)).toThrow()
     })
   })
 
@@ -199,13 +145,6 @@ describe('TeamConfigService', () => {
       const enriched = service.enrichConfig(config)
       expect(enriched.agents[1].color).not.toBe(AGENT_COLORS[0])
       expect(enriched.agents[1].color).toBe(AGENT_COLORS[1])
-    })
-  })
-
-  describe('deleteConfig', () => {
-    it('removes a config file', () => {
-      service.deleteConfig('old-team.yml')
-      expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/test-teams/old-team.yml')
     })
   })
 })

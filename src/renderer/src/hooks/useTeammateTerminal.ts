@@ -1,8 +1,18 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { Terminal } from 'xterm'
+import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import {
+  getOrCreateTerminal,
+  attachTerminal,
+  detachTerminal,
+  isTerminalAttached,
+  bufferOutput
+} from '../terminal/TerminalRegistry'
+
+const RESIZE_DEBOUNCE_MS = 150
 
 export function useTeammateTerminal(
+  tabId: string,
   paneId: string,
   containerRef: RefObject<HTMLDivElement | null>
 ) {
@@ -12,74 +22,67 @@ export function useTeammateTerminal(
   useEffect(() => {
     if (!containerRef.current) return
 
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 13,
-      fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
-      theme: {
-        background: '#1a1a2e',
-        foreground: '#e0e0e0',
-        cursor: '#e0e0e0',
-        cursorAccent: '#1a1a2e',
-        selectionBackground: '#2a3a66',
-        selectionForeground: '#e0e0e0'
-      },
-      allowTransparency: false,
-      scrollback: 10000
-    })
+    const termId = `teammate:${paneId}`
 
-    const fitAddon = new FitAddon()
-    term.loadAddon(fitAddon)
-    term.open(containerRef.current)
-
-    try {
-      fitAddon.fit()
-    } catch {
-      // fit may fail if container has no dimensions yet
-    }
-
-    termRef.current = term
-    fitRef.current = fitAddon
-
-    // Subscribe to teammate output (filtered by paneId)
-    // Output is streamed incrementally via pipe-pane
-    const unsubscribe = window.api.onTeammateOutput((payload) => {
-      if (payload.paneId === paneId) {
-        term.write(payload.data)
-      }
-    })
-
-    // Send keyboard input to teammate's tmux pane
-    const dataDisposable = term.onData((data) => {
-      window.api.sendTeammateInput({ paneId, data })
-    })
-
-    // Handle resize — fit terminal and resize tmux pane to match
-    const resizeObserver = new ResizeObserver(() => {
-      try {
-        fitAddon.fit()
-        // Sync tmux pane size with terminal dimensions
-        if (term.cols && term.rows) {
-          window.api.sendTeammateInput({
-            paneId: `__resize__${paneId}`,
-            data: JSON.stringify({ cols: term.cols, rows: term.rows })
-          })
+    const entry = getOrCreateTerminal(tabId, termId, { cursorBlink: true }, (term) => {
+      // IPC output subscription — stays active even when detached from DOM
+      const unsubscribe = window.api.onTeammateOutput((payload) => {
+        if (payload.paneId === paneId && payload.tabId === tabId) {
+          if (isTerminalAttached(tabId, termId)) {
+            term.write(payload.data)
+          } else {
+            bufferOutput(tabId, termId, payload.data)
+          }
         }
-      } catch {
-        // ignore resize errors
-      }
+      })
+
+      return unsubscribe
+    })
+
+    termRef.current = entry.terminal
+    fitRef.current = entry.fitAddon
+
+    // Attach to DOM (open or re-attach)
+    attachTerminal(tabId, termId, containerRef.current)
+
+    // Input handler — only active while attached
+    const dataDisposable = entry.terminal.onData((data) => {
+      window.api.sendTeammateInput({ tabId, paneId, data })
+    })
+
+    // Resize observer — debounced to avoid fit() cascade during drag
+    let lastCols = 0
+    let lastRows = 0
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
+    const resizeObserver = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        try {
+          entry.fitAddon.fit()
+          if (
+            entry.terminal.cols &&
+            entry.terminal.rows &&
+            (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
+          ) {
+            lastCols = entry.terminal.cols
+            lastRows = entry.terminal.rows
+            window.api.teammateResize?.({ tabId, paneId, cols: lastCols, rows: lastRows })
+          }
+        } catch {
+          // ignore resize errors
+        }
+      }, RESIZE_DEBOUNCE_MS)
     })
     resizeObserver.observe(containerRef.current)
 
     return () => {
       dataDisposable.dispose()
-      unsubscribe()
+      if (resizeTimer) clearTimeout(resizeTimer)
       resizeObserver.disconnect()
-      term.dispose()
-      termRef.current = null
-      fitRef.current = null
+      // Detach from DOM but keep terminal alive in registry
+      detachTerminal(tabId, termId)
     }
-  }, [paneId, containerRef])
+  }, [tabId, paneId, containerRef])
 
   return { termRef, fitRef }
 }

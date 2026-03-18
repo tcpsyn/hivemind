@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { TerminalPane } from './TerminalPane'
-import { useAppState, useAppDispatch } from '../state/AppContext'
+import { useAppState, useAppDispatch, useActiveTab } from '../state/AppContext'
 import type { AgentState } from '../../../shared/types'
 import './PaneGrid.css'
 
@@ -18,13 +18,14 @@ function autoGridSize(count: number): { cols: number; rows: number } {
 export function PaneGrid({ agents }: PaneGridProps) {
   const state = useAppState()
   const dispatch = useAppDispatch()
-  const maximizedId = state.layout.maximizedPaneId
+  const tab = useActiveTab()
+  const maximizedId = tab.layout.maximizedPaneId
 
   const { cols, rows } = useMemo(() => autoGridSize(agents.length), [agents.length])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape' && maximizedId) {
-      dispatch({ type: 'RESTORE_PANE' })
+      dispatch({ type: 'RESTORE_PANE', tabId: state.activeTabId })
     }
   }
 

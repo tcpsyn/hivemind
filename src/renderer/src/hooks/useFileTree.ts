@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useAppState } from '../state/AppContext'
+import { useActiveTab } from '../state/AppContext'
 import type { FileTreeNode } from '../../../shared/types'
 
 export function useFileTree() {
-  const { project } = useAppState()
+  const tab = useActiveTab()
   const [tree, setTree] = useState<FileTreeNode[]>([])
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
@@ -15,7 +15,10 @@ export function useFileTree() {
       return
     }
     try {
-      const result = await window.api.fileTreeRequest({ rootPath: project.path || '.' })
+      const result = await window.api.fileTreeRequest({
+        tabId: tab.id,
+        rootPath: tab.projectPath || '.'
+      })
       if (mountedRef.current) {
         setTree(result)
         setLoading(false)
@@ -25,7 +28,7 @@ export function useFileTree() {
         setLoading(false)
       }
     }
-  }, [project.path])
+  }, [tab.id, tab.projectPath])
 
   useEffect(() => {
     mountedRef.current = true

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { TeammateCard } from '../../../renderer/src/components/TeammateCard'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
 import type { AgentState } from '../../../shared/types'
@@ -128,6 +128,79 @@ describe('TeammateCard', () => {
       renderCard(makeTeammate({ needsInput: true }), { onSelect })
       fireEvent.click(screen.getByTestId('btn-deny'))
       expect(onSelect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('activity detection', () => {
+    it('shows active status dot when lastActivity changes', async () => {
+      vi.useFakeTimers()
+      const agent = makeTeammate({ lastActivity: 1000 })
+      const { rerender } = renderCard(agent)
+
+      // Update lastActivity to trigger active state
+      rerender(
+        <AppProvider>
+          <TeammateCard
+            agent={{ ...agent, lastActivity: 2000 }}
+            isSelected={false}
+            onSelect={vi.fn()}
+          />
+        </AppProvider>
+      )
+
+      expect(screen.getByTestId('teammate-status-dot')).toHaveClass('active')
+
+      // After 3 seconds, active class should be removed
+      await act(async () => {
+        vi.advanceTimersByTime(3100)
+      })
+
+      expect(screen.getByTestId('teammate-status-dot')).not.toHaveClass('active')
+      vi.useRealTimers()
+    })
+  })
+
+  describe('formatLastActivity', () => {
+    it('shows "Just now" for recent activity', () => {
+      renderCard(makeTeammate({ lastActivity: Date.now() - 2000 }))
+      expect(screen.getByTestId('teammate-last-activity')).toHaveTextContent('Just now')
+    })
+
+    it('shows seconds for activity < 60s ago', () => {
+      renderCard(makeTeammate({ lastActivity: Date.now() - 30000 }))
+      expect(screen.getByTestId('teammate-last-activity')).toHaveTextContent(/\d+s ago/)
+    })
+
+    it('shows minutes for activity < 60min ago', () => {
+      renderCard(makeTeammate({ lastActivity: Date.now() - 300000 }))
+      expect(screen.getByTestId('teammate-last-activity')).toHaveTextContent(/\d+m ago/)
+    })
+
+    it('shows hours for activity >= 60min ago', () => {
+      renderCard(makeTeammate({ lastActivity: Date.now() - 7200000 }))
+      expect(screen.getByTestId('teammate-last-activity')).toHaveTextContent(/\d+h ago/)
+    })
+  })
+
+  describe('display variations', () => {
+    it('shows model when available', () => {
+      renderCard(makeTeammate({ model: 'Opus 4.6', agentType: undefined }))
+      expect(screen.getByText('Opus 4.6')).toBeInTheDocument()
+    })
+
+    it('shows context percent when available', () => {
+      renderCard(makeTeammate({ model: 'Opus 4.6', contextPercent: '25%' }))
+      expect(screen.getByText('25%')).toBeInTheDocument()
+    })
+
+    it('shows branch when available', () => {
+      renderCard(makeTeammate({ branch: 'feature/test' }))
+      expect(screen.getByText('feature/test')).toBeInTheDocument()
+    })
+
+    it('falls back to role when no model or agentType', () => {
+      renderCard(makeTeammate({ model: undefined, agentType: undefined, role: 'Research agent' }))
+      expect(screen.getByText('Research agent')).toBeInTheDocument()
     })
   })
 

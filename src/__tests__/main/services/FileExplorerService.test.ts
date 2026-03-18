@@ -33,7 +33,6 @@ vi.mock('../../../main/services/GitService', () => ({
       files: [{ path: '/project/index.ts', status: 'modified' }]
     })
     getDiff = vi.fn().mockResolvedValue('diff content')
-    getFileStatus = vi.fn().mockResolvedValue('modified')
   }
 }))
 

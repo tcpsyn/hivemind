@@ -2,14 +2,13 @@ import { describe, it, expect } from 'vitest'
 import {
   AGENT_COLORS,
   AGENT_AVATARS,
-  GRID_CONFIGS,
   DEFAULT_SIDEBAR_WIDTH,
-  DEFAULT_GRID_LAYOUT,
   INPUT_DETECTION_TIMEOUT_MS,
   INPUT_PROMPT_PATTERNS,
   FILE_SAVE_DEBOUNCE_MS,
   FILE_TREE_MAX_DEPTH,
-  WINDOW_DEFAULTS
+  WINDOW_DEFAULTS,
+  TERMINAL_THEME
 } from '../../shared/constants'
 
 describe('constants', () => {
@@ -46,42 +45,21 @@ describe('constants', () => {
     })
   })
 
-  describe('GRID_CONFIGS', () => {
-    it('has all expected layout keys', () => {
-      expect(Object.keys(GRID_CONFIGS).sort()).toEqual(
-        ['1x1', '1x2', '2x1', '2x2', '3x2', 'auto'].sort()
-      )
-    })
-
-    it('each config has matching layout, columns, and rows', () => {
-      for (const [key, config] of Object.entries(GRID_CONFIGS)) {
-        expect(config.layout).toBe(key)
-        expect(config.columns).toBeGreaterThan(0)
-        expect(config.rows).toBeGreaterThan(0)
-      }
-    })
-
-    it('1x1 has 1 column and 1 row', () => {
-      expect(GRID_CONFIGS['1x1']).toEqual({ layout: '1x1', columns: 1, rows: 1 })
-    })
-
-    it('2x2 has 2 columns and 2 rows', () => {
-      expect(GRID_CONFIGS['2x2']).toEqual({ layout: '2x2', columns: 2, rows: 2 })
-    })
-
-    it('3x2 has 3 columns and 2 rows', () => {
-      expect(GRID_CONFIGS['3x2']).toEqual({ layout: '3x2', columns: 3, rows: 2 })
-    })
-  })
-
   describe('defaults', () => {
     it('DEFAULT_SIDEBAR_WIDTH is a positive number', () => {
       expect(DEFAULT_SIDEBAR_WIDTH).toBeGreaterThan(0)
       expect(DEFAULT_SIDEBAR_WIDTH).toBe(250)
     })
+  })
 
-    it('DEFAULT_GRID_LAYOUT is auto', () => {
-      expect(DEFAULT_GRID_LAYOUT).toBe('auto')
+  describe('TERMINAL_THEME', () => {
+    it('has all required xterm theme properties', () => {
+      expect(TERMINAL_THEME.background).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(TERMINAL_THEME.foreground).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(TERMINAL_THEME.cursor).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(TERMINAL_THEME.cursorAccent).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(TERMINAL_THEME.selectionBackground).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(TERMINAL_THEME.selectionForeground).toMatch(/^#[0-9a-f]{6}$/i)
     })
   })
 
@@ -98,9 +76,16 @@ describe('constants', () => {
   describe('INPUT_PROMPT_PATTERNS', () => {
     it('contains common terminal prompt patterns', () => {
       expect(INPUT_PROMPT_PATTERNS).toContain('❯')
-      expect(INPUT_PROMPT_PATTERNS).toContain('$ ')
-      expect(INPUT_PROMPT_PATTERNS).toContain('> ')
       expect(INPUT_PROMPT_PATTERNS).toContain('(y/n)')
+      expect(INPUT_PROMPT_PATTERNS).toContain('[Y/n]')
+      expect(INPUT_PROMPT_PATTERNS).toContain('[y/N]')
+      expect(INPUT_PROMPT_PATTERNS).toContain('(yes/no)')
+    })
+
+    it('does not contain overly broad patterns', () => {
+      expect(INPUT_PROMPT_PATTERNS).not.toContain('$ ')
+      expect(INPUT_PROMPT_PATTERNS).not.toContain('> ')
+      expect(INPUT_PROMPT_PATTERNS).not.toContain('? ')
     })
   })
 
