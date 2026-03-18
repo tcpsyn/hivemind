@@ -175,6 +175,16 @@ describe('NotificationService', () => {
   })
 
   describe('dock badge', () => {
+    const originalPlatform = process.platform
+
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true })
+    })
+
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true })
+    })
+
     it('sets dock badge count when notification is created', () => {
       ptyManager.emit('input-needed', 'agent-1')
       expect(mockDock.setBadge).toHaveBeenCalledWith('1')

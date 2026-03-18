@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within, act } from '@testing-library/react'
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
 import FileTree from '../../../renderer/src/components/FileTree'
@@ -301,16 +301,17 @@ describe('FileTree', () => {
     })
 
     it('arrow right expands directory, arrow left collapses', async () => {
-      const user = userEvent.setup()
       mockFileTreeRequest.mockResolvedValue(mockTree)
       renderFileTree()
       const tree = await screen.findByTestId('file-tree')
-      tree.focus()
-      await user.keyboard('{ArrowDown}')
-      await user.keyboard('{ArrowRight}')
-      expect(await screen.findByText('index.ts')).toBeInTheDocument()
-      await user.keyboard('{ArrowLeft}')
-      expect(screen.queryByText('index.ts')).not.toBeInTheDocument()
+      // Focus tree and navigate to src directory
+      fireEvent.keyDown(tree, { key: 'ArrowDown' })
+      // Expand src with ArrowRight
+      fireEvent.keyDown(tree, { key: 'ArrowRight' })
+      await waitFor(() => expect(screen.getByText('index.ts')).toBeInTheDocument())
+      // Collapse src with ArrowLeft
+      fireEvent.keyDown(tree, { key: 'ArrowLeft' })
+      await waitFor(() => expect(screen.queryByText('index.ts')).not.toBeInTheDocument())
     })
   })
 })
