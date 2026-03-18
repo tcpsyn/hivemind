@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
 import AppShell from '../../../renderer/src/components/AppShell'
@@ -88,12 +88,18 @@ describe('AppShell', () => {
     renderAppShell()
 
     const toggleBtn = screen.getByTestId('sidebar-toggle')
-    fireEvent.click(toggleBtn)
+
+    // Use act to ensure React processes the state update
+    await act(async () => {
+      fireEvent.click(toggleBtn)
+    })
 
     const sidebar = screen.getByTestId('sidebar')
-    await waitFor(() => expect(sidebar).toHaveClass('collapsed'))
+    expect(sidebar).toHaveClass('collapsed')
 
-    fireEvent.click(toggleBtn)
-    await waitFor(() => expect(sidebar).not.toHaveClass('collapsed'))
+    await act(async () => {
+      fireEvent.click(toggleBtn)
+    })
+    expect(sidebar).not.toHaveClass('collapsed')
   })
 })
