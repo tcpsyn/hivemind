@@ -29,10 +29,12 @@ beforeEach(() => {
     value: {
       agentInput: vi.fn().mockResolvedValue(undefined),
       sendTeammateInput: vi.fn().mockResolvedValue(undefined),
-      onTeammateOutput: vi.fn((cb: (payload: { paneId: string; tabId: string; data: string }) => void) => {
-        capturedOutputCb = cb
-        return vi.fn()
-      })
+      onTeammateOutput: vi.fn(
+        (cb: (payload: { paneId: string; tabId: string; data: string }) => void) => {
+          capturedOutputCb = cb
+          return vi.fn()
+        }
+      )
     },
     writable: true,
     configurable: true

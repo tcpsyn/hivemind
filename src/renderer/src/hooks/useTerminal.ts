@@ -1,11 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
-import {
-  getOrCreateTerminal,
-  attachTerminal,
-  detachTerminal
-} from '../terminal/TerminalRegistry'
+import { getOrCreateTerminal, attachTerminal, detachTerminal } from '../terminal/TerminalRegistry'
 
 const RESIZE_DEBOUNCE_MS = 150
 
