@@ -24,6 +24,7 @@ const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoi
     onData: vi.fn(() => ({ dispose: vi.fn() })),
     loadAddon: vi.fn(),
     focus: vi.fn(),
+    refresh: vi.fn(),
     cols: 80,
     rows: 24,
     options: {},

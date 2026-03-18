@@ -21,23 +21,26 @@ function formatLastActivity(timestamp: number): string {
 export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps) {
   const [isActive, setIsActive] = useState(false)
   const activeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastActivityRef = useRef(agent.lastActivity)
 
-  // Detect activity: when lastActivity timestamp changes, mark as active
-  // and clear after 3 seconds of no new activity
+  // Track actual output activity — subscribe directly to teammate output IPC.
+  // Local state only, no context dispatch, no re-render cascade.
   useEffect(() => {
-    if (agent.lastActivity !== lastActivityRef.current) {
-      lastActivityRef.current = agent.lastActivity
-      setIsActive(true)
+    if (!agent.paneId) return
 
-      if (activeTimeout.current) clearTimeout(activeTimeout.current)
-      activeTimeout.current = setTimeout(() => setIsActive(false), 3000)
-    }
+    const paneId = agent.paneId
+    const unsub = window.api?.onTeammateOutput?.((payload) => {
+      if (payload.paneId === paneId) {
+        setIsActive(true)
+        if (activeTimeout.current) clearTimeout(activeTimeout.current)
+        activeTimeout.current = setTimeout(() => setIsActive(false), 2000)
+      }
+    })
 
     return () => {
+      unsub?.()
       if (activeTimeout.current) clearTimeout(activeTimeout.current)
     }
-  }, [agent.lastActivity])
+  }, [agent.paneId])
 
   const handleApprove = useCallback(
     (e: React.MouseEvent) => {

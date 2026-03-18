@@ -4,9 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import {
   getOrCreateTerminal,
   attachTerminal,
-  detachTerminal,
-  isTerminalAttached,
-  bufferOutput
+  detachTerminal
 } from '../terminal/TerminalRegistry'
 
 const RESIZE_DEBOUNCE_MS = 150
@@ -49,7 +47,9 @@ export function useTerminal(
         ]
         term.write(banner.join('\r\n'))
 
-        // IPC output subscription — stays active even when detached from DOM
+        // IPC output subscription — writes directly to xterm buffer even when detached.
+        // xterm.js updates its internal buffer without canvas rendering when not in DOM,
+        // and paints correctly on reattach.
         let bannerCleared = false
         const unsubscribe = window.api.onAgentOutput((payload) => {
           if (payload.agentId === agentId && payload.tabId === tabId) {
@@ -57,11 +57,7 @@ export function useTerminal(
               bannerCleared = true
               term.reset()
             }
-            if (isTerminalAttached(tabId, agentId)) {
-              term.write(payload.data)
-            } else {
-              bufferOutput(tabId, agentId, payload.data)
-            }
+            term.write(payload.data)
           }
         })
 

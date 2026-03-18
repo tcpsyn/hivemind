@@ -6,10 +6,13 @@ import type { AgentState } from '../../../shared/types'
 const mockTerminal = vi.hoisted(() => ({
   open: vi.fn(),
   write: vi.fn(),
+  reset: vi.fn(),
+  refresh: vi.fn(),
   dispose: vi.fn(),
   onData: vi.fn(() => ({ dispose: vi.fn() })),
   loadAddon: vi.fn(),
   focus: vi.fn(),
+  rows: 24,
   options: {}
 }))
 
