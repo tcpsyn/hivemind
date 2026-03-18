@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
 import AppShell from '../../../renderer/src/components/AppShell'
@@ -85,16 +85,15 @@ describe('AppShell', () => {
   })
 
   it('toggles sidebar via toggle button', async () => {
-    const user = userEvent.setup()
     renderAppShell()
 
     const toggleBtn = screen.getByTestId('sidebar-toggle')
-    await user.click(toggleBtn)
+    fireEvent.click(toggleBtn)
 
     const sidebar = screen.getByTestId('sidebar')
     await waitFor(() => expect(sidebar).toHaveClass('collapsed'))
 
-    await user.click(toggleBtn)
+    fireEvent.click(toggleBtn)
     await waitFor(() => expect(sidebar).not.toHaveClass('collapsed'))
   })
 })
