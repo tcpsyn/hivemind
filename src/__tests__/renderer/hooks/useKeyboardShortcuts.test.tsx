@@ -8,7 +8,7 @@ import {
   useActiveTab
 } from '../../../renderer/src/state/AppContext'
 import { useKeyboardShortcuts } from '../../../renderer/src/hooks/useKeyboardShortcuts'
-import type { AgentState, AppState, EditorTab } from '../../../shared/types'
+
 
 function wrapper({ children }: { children: ReactNode }) {
   return <AppProvider>{children}</AppProvider>

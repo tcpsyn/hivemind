@@ -9,7 +9,7 @@ import { AppProvider } from '../../../renderer/src/state/AppContext'
  * Focuses on: cross-tab isolation, disposeTabTerminals, concurrent tabs.
  */
 
-const { mockTerminal, mockElement, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoisted(
+const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoisted(
   () => {
     const mockElement = document.createElement('div')
     mockElement.classList.add('terminal', 'xterm')

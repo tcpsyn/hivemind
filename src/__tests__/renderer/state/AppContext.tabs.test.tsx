@@ -174,7 +174,7 @@ describe('AppContext — Multi-Project Tabs', () => {
 
     it('closing last tab creates a new empty tab at ~', () => {
       // Close the default tab
-      let state = appReducer(initialAppState, {
+      const state = appReducer(initialAppState, {
         type: 'CLOSE_TAB',
         payload: initialAppState.activeTabId
       })

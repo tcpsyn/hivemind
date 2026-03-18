@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
-import { AppProvider, useAppState, useAppDispatch } from '../../../renderer/src/state/AppContext'
+import { AppProvider, useAppDispatch } from '../../../renderer/src/state/AppContext'
 import { useRecentProjects } from '../../../renderer/src/hooks/useRecentProjects'
 
 const STORAGE_KEY = 'hivemind:recentProjects'
