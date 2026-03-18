@@ -3,13 +3,7 @@ import { watch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import type { FileChangeEvent } from '../../shared/types'
 
-const IGNORED_PATTERNS = [
-  /node_modules/,
-  /\.git/,
-  /\.claude/,
-  /dist/,
-  /out/
-]
+const IGNORED_PATTERNS = [/node_modules/, /\.git/, /\.claude/, /dist/, /out/]
 const DEBOUNCE_MS = 100
 
 export class FileWatcher extends EventEmitter {

@@ -136,9 +136,9 @@ describe('createIpcServices', () => {
       ;(tabServices.ptyManager.getAll as ReturnType<typeof vi.fn>).mockReturnValue(new Map())
       const { services, tabId } = await createServiceWithTab(deps)
 
-      await expect(
-        services.onAgentRestart({ tabId, agentId: 'nonexistent' })
-      ).rejects.toThrow('Agent nonexistent not found')
+      await expect(services.onAgentRestart({ tabId, agentId: 'nonexistent' })).rejects.toThrow(
+        'Agent nonexistent not found'
+      )
     })
   })
 
@@ -176,9 +176,7 @@ describe('createIpcServices', () => {
   describe('onFileTreeRequest', () => {
     it('returns the file tree', async () => {
       const mockTree = [{ name: 'src', path: '/src', type: 'directory' as const }]
-      ;(tabServices.fileService.getFileTree as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockTree
-      )
+      ;(tabServices.fileService.getFileTree as ReturnType<typeof vi.fn>).mockResolvedValue(mockTree)
 
       const { services, tabId } = await createServiceWithTab(deps)
       const result = await services.onFileTreeRequest({ tabId, rootPath: '/project' })

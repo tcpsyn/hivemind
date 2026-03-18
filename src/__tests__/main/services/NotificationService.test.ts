@@ -194,7 +194,6 @@ describe('NotificationService', () => {
 
       expect(mockDock.setBadge).toHaveBeenLastCalledWith('')
     })
-
   })
 
   describe('click handler — focus window', () => {

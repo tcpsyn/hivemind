@@ -9,39 +9,37 @@ import { AppProvider } from '../../../renderer/src/state/AppContext'
  * Focuses on: cross-tab isolation, disposeTabTerminals, concurrent tabs.
  */
 
-const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoisted(
-  () => {
-    const mockElement = document.createElement('div')
-    mockElement.classList.add('terminal', 'xterm')
+const { mockTerminal, mockFitAddon, mockOnAgentOutput, mockAgentInput } = vi.hoisted(() => {
+  const mockElement = document.createElement('div')
+  mockElement.classList.add('terminal', 'xterm')
 
-    const mockTerminal = {
-      open: vi.fn((container: HTMLDivElement) => {
-        mockTerminal.element = mockElement
-        container.appendChild(mockElement)
-      }),
-      write: vi.fn(),
-      reset: vi.fn(),
-      dispose: vi.fn(),
-      onData: vi.fn(() => ({ dispose: vi.fn() })),
-      loadAddon: vi.fn(),
-      focus: vi.fn(),
-      cols: 80,
-      rows: 24,
-      options: {},
-      element: undefined as HTMLDivElement | undefined
-    }
-
-    const mockFitAddon = {
-      fit: vi.fn(),
-      dispose: vi.fn()
-    }
-
-    const mockOnAgentOutput = vi.fn(() => vi.fn())
-    const mockAgentInput = vi.fn()
-
-    return { mockTerminal, mockElement, mockFitAddon, mockOnAgentOutput, mockAgentInput }
+  const mockTerminal = {
+    open: vi.fn((container: HTMLDivElement) => {
+      mockTerminal.element = mockElement
+      container.appendChild(mockElement)
+    }),
+    write: vi.fn(),
+    reset: vi.fn(),
+    dispose: vi.fn(),
+    onData: vi.fn(() => ({ dispose: vi.fn() })),
+    loadAddon: vi.fn(),
+    focus: vi.fn(),
+    cols: 80,
+    rows: 24,
+    options: {},
+    element: undefined as HTMLDivElement | undefined
   }
-)
+
+  const mockFitAddon = {
+    fit: vi.fn(),
+    dispose: vi.fn()
+  }
+
+  const mockOnAgentOutput = vi.fn(() => vi.fn())
+  const mockAgentInput = vi.fn()
+
+  return { mockTerminal, mockElement, mockFitAddon, mockOnAgentOutput, mockAgentInput }
+})
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: function () {
@@ -66,9 +64,8 @@ Object.defineProperty(window, 'api', {
 })
 
 const { useTerminal } = await import('../../../renderer/src/hooks/useTerminal')
-const { clearAllTerminals, getTabTerminalCount, disposeTabTerminals } = await import(
-  '../../../renderer/src/terminal/TerminalRegistry'
-)
+const { clearAllTerminals, getTabTerminalCount, disposeTabTerminals } =
+  await import('../../../renderer/src/terminal/TerminalRegistry')
 
 function wrapper({ children }: { children: ReactNode }) {
   return <AppProvider>{children}</AppProvider>

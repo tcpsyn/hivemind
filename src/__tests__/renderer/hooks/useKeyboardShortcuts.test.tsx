@@ -9,7 +9,6 @@ import {
 } from '../../../renderer/src/state/AppContext'
 import { useKeyboardShortcuts } from '../../../renderer/src/hooks/useKeyboardShortcuts'
 
-
 function wrapper({ children }: { children: ReactNode }) {
   return <AppProvider>{children}</AppProvider>
 }
@@ -73,9 +72,7 @@ describe('useKeyboardShortcuts', () => {
         { wrapper }
       )
 
-      act(() =>
-        result.current.dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'editor' })
-      )
+      act(() => result.current.dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'editor' }))
       act(() => fireKey('Tab', { metaKey: true }))
       expect(result.current.state.activeFeatureTab).toBe('git')
     })
@@ -89,9 +86,7 @@ describe('useKeyboardShortcuts', () => {
         { wrapper }
       )
 
-      act(() =>
-        result.current.dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'git' })
-      )
+      act(() => result.current.dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'git' }))
       act(() => fireKey('Tab', { metaKey: true }))
       expect(result.current.state.activeFeatureTab).toBe('agents')
     })

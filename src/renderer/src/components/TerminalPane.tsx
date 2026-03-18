@@ -25,7 +25,9 @@ export function TerminalPane({ agent }: TerminalPaneProps) {
         className="pane-header"
         data-testid="pane-header"
         style={{ borderTopColor: agent.color }}
-        onDoubleClick={() => dispatch({ type: 'MAXIMIZE_PANE', payload: agent.id, tabId: activeTabId })}
+        onDoubleClick={() =>
+          dispatch({ type: 'MAXIMIZE_PANE', payload: agent.id, tabId: activeTabId })
+        }
       >
         <AgentAvatar avatar={agent.avatar} color={agent.color} size={20} />
         <span className="pane-name">{agent.name}</span>

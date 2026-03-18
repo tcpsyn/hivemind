@@ -268,14 +268,17 @@ export class TmuxProxyServer extends EventEmitter {
     // List panes only from the team's session
     let stdout: string
     try {
-      const result = await this.execCommand(this.realTmuxPath, this.tmuxArgs([
-        'list-panes',
-        '-t',
-        this.leadSessionName,
-        '-a',
-        '-F',
-        '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
-      ]))
+      const result = await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs([
+          'list-panes',
+          '-t',
+          this.leadSessionName,
+          '-a',
+          '-F',
+          '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
+        ])
+      )
       stdout = result.stdout
       this.consecutiveDiscoverFailures = 0
       if (!this.serverHealthy) {
@@ -374,11 +377,13 @@ export class TmuxProxyServer extends EventEmitter {
     this.paneCaptureIntervals.set(`status-${paneId}`, interval)
   }
 
-  private parseClaudeStatus(output: string): { model?: string; contextPercent?: string; branch?: string; project?: string } | null {
+  private parseClaudeStatus(
+    output: string
+  ): { model?: string; contextPercent?: string; branch?: string; project?: string } | null {
     // Claude Code status line looks like:
     // cc_frontend  Opus 4.6  [████████████] 11%  ⌞ feature/branch
     // or: cc_frontend  Opus 4.6 (1M context)  [████] 3%  ⌞ feature...
-    const lines = output.split('\n').filter(l => l.trim())
+    const lines = output.split('\n').filter((l) => l.trim())
     for (const line of lines) {
       // Look for model pattern (Opus/Sonnet/Haiku + version)
       const modelMatch = line.match(/(Opus|Sonnet|Haiku)\s+[\d.]+/)
@@ -410,7 +415,9 @@ export class TmuxProxyServer extends EventEmitter {
 
       try {
         const { stdout: childOut } = await this.execCommand('pgrep', [
-          '-P', String(pid), '-a'
+          '-P',
+          String(pid),
+          '-a'
         ]).catch(() => ({ stdout: '' }))
 
         const nameMatch = childOut.match(/--agent-name\s+(\S+)/)
@@ -436,9 +443,10 @@ export class TmuxProxyServer extends EventEmitter {
 
   async resizePane(paneId: string, cols: number, rows: number): Promise<void> {
     try {
-      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
-        'resize-pane', '-t', paneId, '-x', String(cols), '-y', String(rows)
-      ]))
+      await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs(['resize-pane', '-t', paneId, '-x', String(cols), '-y', String(rows)])
+      )
     } catch {
       // resize may fail if pane no longer exists
     }
@@ -453,9 +461,10 @@ export class TmuxProxyServer extends EventEmitter {
 
     // Use tmux pipe-pane to stream output to the file
     try {
-      await this.execCommand(this.realTmuxPath, this.tmuxArgs([
-        'pipe-pane', '-t', paneId, '-o', `cat >> "${outFile}"`
-      ]))
+      await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs(['pipe-pane', '-t', paneId, '-o', `cat >> "${outFile}"`])
+      )
     } catch {
       // pipe-pane may fail, fall back to capture-pane polling
       this.startCapturePanePolling(paneId)
@@ -467,7 +476,9 @@ export class TmuxProxyServer extends EventEmitter {
       interval: setInterval(() => {
         if (!state.reading) {
           state.reading = true
-          this.readNewOutput(paneId, state).finally(() => { state.reading = false })
+          this.readNewOutput(paneId, state).finally(() => {
+            state.reading = false
+          })
         }
       }, 200),
       outFile,
@@ -557,7 +568,10 @@ export class TmuxProxyServer extends EventEmitter {
     }
 
     const escaped = data.replace(/"/g, '\\"')
-    await this.execCommand(this.realTmuxPath, this.tmuxArgs(['send-keys', '-t', paneId, '-l', escaped]))
+    await this.execCommand(
+      this.realTmuxPath,
+      this.tmuxArgs(['send-keys', '-t', paneId, '-l', escaped])
+    )
   }
 
   private startPolling(): void {

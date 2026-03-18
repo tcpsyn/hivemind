@@ -66,12 +66,20 @@ describe('Preload bridge', () => {
 
     it('has all expected invoke methods', () => {
       const expectedInvokeMethods = [
-        'agentInput', 'agentStop', 'agentRestart', 'agentResize',
-        'fileRead', 'fileWrite', 'fileTreeRequest',
+        'agentInput',
+        'agentStop',
+        'agentRestart',
+        'agentResize',
+        'fileRead',
+        'fileWrite',
+        'fileTreeRequest',
         'gitDiff',
-        'teamStart', 'teamStop',
-        'tabCreate', 'tabClose',
-        'sendTeammateInput', 'teammateResize'
+        'teamStart',
+        'teamStop',
+        'tabCreate',
+        'tabClose',
+        'sendTeammateInput',
+        'teammateResize'
       ]
 
       for (const method of expectedInvokeMethods) {
@@ -82,11 +90,20 @@ describe('Preload bridge', () => {
 
     it('has all expected event listener methods', () => {
       const expectedListenerMethods = [
-        'onAgentOutput', 'onAgentStatusChange', 'onAgentInputNeeded',
-        'onFileChanged', 'onFileTreeUpdate', 'onGitStatusUpdate',
-        'onTeammateSpawned', 'onTeammateExited', 'onTeammateOutput',
-        'onTeammateRenamed', 'onTeammateStatus',
-        'onTeamAutoStarted', 'onMenuTeamStart', 'onMenuTeamStop'
+        'onAgentOutput',
+        'onAgentStatusChange',
+        'onAgentInputNeeded',
+        'onFileChanged',
+        'onFileTreeUpdate',
+        'onGitStatusUpdate',
+        'onTeammateSpawned',
+        'onTeammateExited',
+        'onTeammateOutput',
+        'onTeammateRenamed',
+        'onTeammateStatus',
+        'onTeamAutoStarted',
+        'onMenuTeamStart',
+        'onMenuTeamStop'
       ]
 
       for (const method of expectedListenerMethods) {
@@ -187,7 +204,10 @@ describe('Preload bridge', () => {
       const cb = vi.fn()
       api.onAgentOutput(cb)
 
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.AGENT_OUTPUT, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.AGENT_OUTPUT,
+        expect.any(Function)
+      )
 
       emitIpcEvent(MainToRenderer.AGENT_OUTPUT, { agentId: 'a1', data: 'hello' })
       expect(cb).toHaveBeenCalledWith({ agentId: 'a1', data: 'hello' })
@@ -196,61 +216,91 @@ describe('Preload bridge', () => {
     it('onAgentStatusChange subscribes correctly', () => {
       const cb = vi.fn()
       api.onAgentStatusChange(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.AGENT_STATUS_CHANGE, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.AGENT_STATUS_CHANGE,
+        expect.any(Function)
+      )
     })
 
     it('onAgentInputNeeded subscribes correctly', () => {
       const cb = vi.fn()
       api.onAgentInputNeeded(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.AGENT_INPUT_NEEDED, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.AGENT_INPUT_NEEDED,
+        expect.any(Function)
+      )
     })
 
     it('onFileChanged subscribes correctly', () => {
       const cb = vi.fn()
       api.onFileChanged(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.FILE_CHANGED, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.FILE_CHANGED,
+        expect.any(Function)
+      )
     })
 
     it('onFileTreeUpdate subscribes correctly', () => {
       const cb = vi.fn()
       api.onFileTreeUpdate(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.FILE_TREE_UPDATE, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.FILE_TREE_UPDATE,
+        expect.any(Function)
+      )
     })
 
     it('onGitStatusUpdate subscribes correctly', () => {
       const cb = vi.fn()
       api.onGitStatusUpdate(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.GIT_STATUS_UPDATE, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.GIT_STATUS_UPDATE,
+        expect.any(Function)
+      )
     })
 
     it('onTeammateSpawned subscribes correctly', () => {
       const cb = vi.fn()
       api.onTeammateSpawned(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.TEAM_TEAMMATE_SPAWNED, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.TEAM_TEAMMATE_SPAWNED,
+        expect.any(Function)
+      )
     })
 
     it('onTeammateExited subscribes correctly', () => {
       const cb = vi.fn()
       api.onTeammateExited(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.TEAM_TEAMMATE_EXITED, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.TEAM_TEAMMATE_EXITED,
+        expect.any(Function)
+      )
     })
 
     it('onTeammateOutput subscribes correctly', () => {
       const cb = vi.fn()
       api.onTeammateOutput(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.TEAMMATE_OUTPUT, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.TEAMMATE_OUTPUT,
+        expect.any(Function)
+      )
     })
 
     it('onTeammateRenamed subscribes correctly', () => {
       const cb = vi.fn()
       api.onTeammateRenamed(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.TEAM_TEAMMATE_RENAMED, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.TEAM_TEAMMATE_RENAMED,
+        expect.any(Function)
+      )
     })
 
     it('onTeammateStatus subscribes correctly', () => {
       const cb = vi.fn()
       api.onTeammateStatus(cb)
-      expect(mockIpcRenderer.on).toHaveBeenCalledWith(MainToRenderer.TEAM_TEAMMATE_STATUS, expect.any(Function))
+      expect(mockIpcRenderer.on).toHaveBeenCalledWith(
+        MainToRenderer.TEAM_TEAMMATE_STATUS,
+        expect.any(Function)
+      )
     })
 
     it('onTeamAutoStarted subscribes to team:auto-started', () => {

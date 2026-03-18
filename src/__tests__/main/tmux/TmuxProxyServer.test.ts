@@ -771,7 +771,13 @@ describe('TmuxProxyServer', () => {
       await server.resizePane('%1', 120, 40)
 
       expect(mockExec).toHaveBeenCalledWith('/usr/bin/tmux', [
-        'resize-pane', '-t', '%1', '-x', '120', '-y', '40'
+        'resize-pane',
+        '-t',
+        '%1',
+        '-x',
+        '120',
+        '-y',
+        '40'
       ])
     })
 
@@ -796,9 +802,10 @@ describe('TmuxProxyServer', () => {
       mockExec.mockResolvedValue({ stdout: '', stderr: '' })
       await server.discoverPanes()
 
-      expect(mockExec).toHaveBeenCalledWith('/usr/bin/tmux', expect.arrayContaining([
-        '-L', 'hivemind-test', 'list-panes'
-      ]))
+      expect(mockExec).toHaveBeenCalledWith(
+        '/usr/bin/tmux',
+        expect.arrayContaining(['-L', 'hivemind-test', 'list-panes'])
+      )
     })
   })
 

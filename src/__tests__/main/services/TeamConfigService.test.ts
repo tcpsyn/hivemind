@@ -4,12 +4,7 @@ import type { TeamConfig } from '../../../shared/types'
 import { AGENT_COLORS, AGENT_AVATARS } from '../../../shared/constants'
 
 // Mock fs and yaml - use vi.hoisted since vi.mock is hoisted
-const {
-  mockExistsSync,
-  mockMkdirSync,
-  mockReadFileSync,
-  mockYamlParse
-} = vi.hoisted(() => ({
+const { mockExistsSync, mockMkdirSync, mockReadFileSync, mockYamlParse } = vi.hoisted(() => ({
   mockExistsSync: vi.fn(() => true),
   mockMkdirSync: vi.fn(),
   mockReadFileSync: vi.fn(),
@@ -152,5 +147,4 @@ describe('TeamConfigService', () => {
       expect(enriched.agents[1].color).toBe(AGENT_COLORS[1])
     })
   })
-
 })

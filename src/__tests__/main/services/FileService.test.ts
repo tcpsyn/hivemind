@@ -124,5 +124,4 @@ describe('FileService', () => {
       expect(srcNode.children![0].path).toBe(path.join(tmpDir, 'src', 'app.ts'))
     })
   })
-
 })

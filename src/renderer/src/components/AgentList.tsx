@@ -29,9 +29,7 @@ export default function AgentList({ onAgentContextMenu }: AgentListProps) {
             key={agent.id}
             agent={agent}
             onContextMenu={
-              onAgentContextMenu
-                ? (action) => onAgentContextMenu(agent.id, action)
-                : undefined
+              onAgentContextMenu ? (action) => onAgentContextMenu(agent.id, action) : undefined
             }
           />
         ))

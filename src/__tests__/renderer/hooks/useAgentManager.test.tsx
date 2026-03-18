@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import {
-  AppProvider,
-  useAppState,
-  useActiveTab
-} from '../../../renderer/src/state/AppContext'
+import { AppProvider, useAppState, useActiveTab } from '../../../renderer/src/state/AppContext'
 import { useAgentManager } from '../../../renderer/src/hooks/useAgentManager'
 import type { AgentState, TeamConfig } from '../../../shared/types'
 

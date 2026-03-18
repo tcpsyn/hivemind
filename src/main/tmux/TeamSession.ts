@@ -79,7 +79,12 @@ export class TeamSession extends EventEmitter {
 
     // Disable tmux status bar — we show agent info in the app UI instead
     await execFileAsync(this.realTmuxPath, [
-      '-L', this.tmuxSocketName, 'set-option', '-g', 'status', 'off'
+      '-L',
+      this.tmuxSocketName,
+      'set-option',
+      '-g',
+      'status',
+      'off'
     ])
 
     // Get the TMUX env var value (socket_path,server_pid,session_idx)
@@ -254,23 +259,35 @@ export class TeamSession extends EventEmitter {
       this.emit('teammate-output', paneId, data.toString())
     })
 
-    this.proxyServer.on('teammate-status-update', (info: { paneId: string; model?: string; contextPercent?: string; branch?: string; project?: string }) => {
-      const agentId = this.paneIdToAgentId.get(info.paneId)
-      if (agentId) {
-        this.emit('teammate-status-update', agentId, info)
-      }
-    })
-
-    this.proxyServer.on('teammate-renamed', ({ paneId, name }: { paneId: string; name: string }) => {
-      const agentId = this.paneIdToAgentId.get(paneId)
-      if (agentId) {
-        const agent = this.teammates.get(agentId)
-        if (agent) {
-          agent.name = name
-          this.emit('teammate-renamed', agentId, name, paneId)
+    this.proxyServer.on(
+      'teammate-status-update',
+      (info: {
+        paneId: string
+        model?: string
+        contextPercent?: string
+        branch?: string
+        project?: string
+      }) => {
+        const agentId = this.paneIdToAgentId.get(info.paneId)
+        if (agentId) {
+          this.emit('teammate-status-update', agentId, info)
         }
       }
-    })
+    )
+
+    this.proxyServer.on(
+      'teammate-renamed',
+      ({ paneId, name }: { paneId: string; name: string }) => {
+        const agentId = this.paneIdToAgentId.get(paneId)
+        if (agentId) {
+          const agent = this.teammates.get(agentId)
+          if (agent) {
+            agent.name = name
+            this.emit('teammate-renamed', agentId, name, paneId)
+          }
+        }
+      }
+    )
 
     this.proxyServer.on('teammate-exited', ({ paneId }: { paneId: string }) => {
       const agentId = this.paneIdToAgentId.get(paneId)

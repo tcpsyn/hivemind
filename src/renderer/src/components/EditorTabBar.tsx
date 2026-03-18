@@ -14,7 +14,9 @@ export default function EditorTabBar() {
           key={tab.id}
           className={`editor-tab${tab.id === activeFileId ? ' active' : ''}`}
           data-testid={`editor-tab-${tab.id}`}
-          onClick={() => dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: tab.id, tabId: state.activeTabId })}
+          onClick={() =>
+            dispatch({ type: 'SET_ACTIVE_EDITOR_TAB', payload: tab.id, tabId: state.activeTabId })
+          }
         >
           <span className="editor-tab-name">{tab.fileName}</span>
           {tab.isModified && (

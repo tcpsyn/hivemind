@@ -120,10 +120,13 @@ describe('createIpcServices — Multi-Tab TabContext', () => {
       const services = createIpcServices(deps)
       const result = await services.onTabCreate({ projectPath: '/path/project' })
 
-      expect(onTabCreated).toHaveBeenCalledWith(result.tabId, expect.objectContaining({
-        projectPath: '/path/project',
-        projectName: 'project'
-      }))
+      expect(onTabCreated).toHaveBeenCalledWith(
+        result.tabId,
+        expect.objectContaining({
+          projectPath: '/path/project',
+          projectName: 'project'
+        })
+      )
     })
 
     it('throws when creating a tab with duplicate tabId', async () => {

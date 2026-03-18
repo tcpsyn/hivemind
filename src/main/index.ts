@@ -41,7 +41,10 @@ function createWindow(): void {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a2e',
     title: 'Hivemind',
-    icon: join(__dirname, '../../resources/icon' + (process.platform === 'darwin' ? '.icns' : '.png')),
+    icon: join(
+      __dirname,
+      '../../resources/icon' + (process.platform === 'darwin' ? '.icns' : '.png')
+    ),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
@@ -309,11 +312,17 @@ function wireTeamSessionEvents(tabId: string, session: TeamSession): void {
     }
   })
 
-  session.on('teammate-status-update', (agentId: string, info: { model?: string; contextPercent?: string; branch?: string; project?: string }) => {
-    if (mainWindow) {
-      sendTeammateStatus(mainWindow, { tabId, agentId, ...info })
+  session.on(
+    'teammate-status-update',
+    (
+      agentId: string,
+      info: { model?: string; contextPercent?: string; branch?: string; project?: string }
+    ) => {
+      if (mainWindow) {
+        sendTeammateStatus(mainWindow, { tabId, agentId, ...info })
+      }
     }
-  })
+  )
 }
 
 function disposeServices(): void {
@@ -397,8 +406,9 @@ app.whenReady().then(async () => {
 
   // Auto-start a tab + team session once the renderer is ready
   mainWindow!.webContents.on('did-finish-load', () => {
-    const projectPath = process.argv.find(a => !a.startsWith('-') && a.startsWith('/') && a !== process.execPath)
-      || (process.cwd() !== '/' ? process.cwd() : app.getPath('home'))
+    const projectPath =
+      process.argv.find((a) => !a.startsWith('-') && a.startsWith('/') && a !== process.execPath) ||
+      (process.cwd() !== '/' ? process.cwd() : app.getPath('home'))
     autoStartFirstTab(projectPath)
   })
 

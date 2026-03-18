@@ -450,10 +450,9 @@ describe('AppContext — Multi-Project Tabs', () => {
     })
 
     it('dispatch CREATE_TAB updates state via hooks', () => {
-      const { result } = renderHook(
-        () => ({ state: useAppState(), dispatch: useAppDispatch() }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => ({ state: useAppState(), dispatch: useAppDispatch() }), {
+        wrapper
+      })
 
       act(() => {
         result.current.dispatch({
@@ -467,10 +466,9 @@ describe('AppContext — Multi-Project Tabs', () => {
     })
 
     it('dispatch SET_ACTIVE_FEATURE_TAB is global', () => {
-      const { result } = renderHook(
-        () => ({ state: useAppState(), dispatch: useAppDispatch() }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => ({ state: useAppState(), dispatch: useAppDispatch() }), {
+        wrapper
+      })
 
       act(() => {
         result.current.dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'editor' })

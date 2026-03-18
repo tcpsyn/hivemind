@@ -59,11 +59,7 @@ export function getOrCreateTerminal(
  * Attaches a terminal to a DOM container. On first call, uses terminal.open().
  * On subsequent calls, moves the existing DOM element into the new container.
  */
-export function attachTerminal(
-  tabId: string,
-  id: string,
-  container: HTMLDivElement
-): void {
+export function attachTerminal(tabId: string, id: string, container: HTMLDivElement): void {
   const entry = entries.get(makeKey(tabId, id))
   if (!entry) return
 

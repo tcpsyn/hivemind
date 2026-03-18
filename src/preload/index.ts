@@ -67,7 +67,14 @@ export interface ElectronApi {
   teammateResize: (req: TeammateResizeRequest) => Promise<void>
 
   // Auto-start and menu events
-  onTeamAutoStarted: (callback: (payload: { tabId: string; projectName: string; projectPath: string; agents: AgentState[] }) => void) => () => void
+  onTeamAutoStarted: (
+    callback: (payload: {
+      tabId: string
+      projectName: string
+      projectPath: string
+      agents: AgentState[]
+    }) => void
+  ) => () => void
   onMenuTeamStart: (callback: (config: unknown) => void) => () => void
   onMenuTeamStop: (callback: () => void) => () => void
 }
@@ -114,7 +121,12 @@ const api: ElectronApi = {
   teammateResize: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_RESIZE, req),
 
   // Auto-start event
-  onTeamAutoStarted: createOnHandler<{ tabId: string; projectName: string; projectPath: string; agents: unknown[] }>('team:auto-started'),
+  onTeamAutoStarted: createOnHandler<{
+    tabId: string
+    projectName: string
+    projectPath: string
+    agents: unknown[]
+  }>('team:auto-started'),
 
   // Menu events
   onMenuTeamStart: createOnHandler<unknown>('menu:team-start'),

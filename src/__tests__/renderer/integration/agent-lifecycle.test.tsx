@@ -45,8 +45,18 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   }
 }
 
-type StatusCb = (payload: { agentId: string; status: string; agent: AgentState; tabId: string }) => void
-type InputCb = (payload: { agentId: string; agentName: string; prompt?: string; tabId: string }) => void
+type StatusCb = (payload: {
+  agentId: string
+  status: string
+  agent: AgentState
+  tabId: string
+}) => void
+type InputCb = (payload: {
+  agentId: string
+  agentName: string
+  prompt?: string
+  tabId: string
+}) => void
 
 let capturedStatusCb: StatusCb | null = null
 let capturedInputCb: InputCb | null = null
@@ -180,11 +190,21 @@ describe('Agent Lifecycle Integration', () => {
       renderApp()
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-1', status: 'running', agent: agent1, tabId: 'tab-default' })
+        capturedStatusCb?.({
+          agentId: 'agent-1',
+          status: 'running',
+          agent: agent1,
+          tabId: 'tab-default'
+        })
       })
 
       await act(async () => {
-        capturedStatusCb?.({ agentId: 'agent-2', status: 'running', agent: agent2, tabId: 'tab-default' })
+        capturedStatusCb?.({
+          agentId: 'agent-2',
+          status: 'running',
+          agent: agent2,
+          tabId: 'tab-default'
+        })
       })
 
       const bottombar = screen.getByTestId('bottombar')

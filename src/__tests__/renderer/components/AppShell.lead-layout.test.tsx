@@ -64,10 +64,7 @@ function makeLead(): AgentState {
   }
 }
 
-function makeState(
-  layoutOverrides: Partial<TabLayout> = {},
-  agents: AgentState[] = []
-): AppState {
+function makeState(layoutOverrides: Partial<TabLayout> = {}, agents: AgentState[] = []): AppState {
   const agentsMap = new Map<string, AgentState>()
   for (const a of agents) {
     agentsMap.set(a.id, a)

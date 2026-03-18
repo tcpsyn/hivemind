@@ -35,7 +35,10 @@ vi.mock('child_process', async (importOriginal) => {
         cb: (err: Error | null, stdout: string, stderr: string) => void
       ) => {
         // Return a plausible TMUX env value and pane id
-        if (typeof _args[_args.length - 1] === 'string' && _args[_args.length - 1].includes('pane_id')) {
+        if (
+          typeof _args[_args.length - 1] === 'string' &&
+          _args[_args.length - 1].includes('pane_id')
+        ) {
           cb(null, '%0\n', '')
         } else {
           cb(null, '/tmp/tmux-501/socket,12345,0\n', '')

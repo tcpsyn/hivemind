@@ -19,10 +19,7 @@ export function TeammateTerminalPane({ agent }: TeammateTerminalPaneProps) {
     .join(' ')
 
   return (
-    <div
-      className={paneClasses}
-      data-testid={`teammate-terminal-pane-${agent.id}`}
-    >
+    <div className={paneClasses} data-testid={`teammate-terminal-pane-${agent.id}`}>
       <div
         className="pane-header"
         data-testid="pane-header"

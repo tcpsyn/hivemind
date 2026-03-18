@@ -95,7 +95,8 @@
 }
 
 @keyframes dot-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
     box-shadow: 0 0 4px var(--status-running);

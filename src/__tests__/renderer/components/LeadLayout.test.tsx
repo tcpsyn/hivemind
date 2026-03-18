@@ -1,10 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { LeadLayout } from '../../../renderer/src/components/LeadLayout'
-import {
-  AppProvider,
-  initialAppState
-} from '../../../renderer/src/state/AppContext'
+import { AppProvider, initialAppState } from '../../../renderer/src/state/AppContext'
 import type { AgentState, AppState } from '../../../shared/types'
 
 vi.mock('../../../renderer/src/components/TerminalPane', () => ({

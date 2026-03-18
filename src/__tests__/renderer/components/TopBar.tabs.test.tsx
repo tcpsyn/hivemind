@@ -122,11 +122,13 @@ describe('TopBar — Multi-Project Tabs', () => {
           <Wrapper />
         </AppProvider>
       )
-      const closeButtons = screen.getAllByRole('button').filter(
-        (btn) =>
-          btn.textContent?.includes('×') ||
-          btn.getAttribute('aria-label')?.toLowerCase().includes('close')
-      )
+      const closeButtons = screen
+        .getAllByRole('button')
+        .filter(
+          (btn) =>
+            btn.textContent?.includes('×') ||
+            btn.getAttribute('aria-label')?.toLowerCase().includes('close')
+        )
       expect(closeButtons.length).toBeGreaterThanOrEqual(1)
     })
 

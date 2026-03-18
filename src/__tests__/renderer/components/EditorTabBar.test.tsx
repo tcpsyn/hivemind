@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import {
-  AppProvider,
-  initialAppState
-} from '../../../renderer/src/state/AppContext'
+import { AppProvider, initialAppState } from '../../../renderer/src/state/AppContext'
 import EditorTabBar from '../../../renderer/src/components/EditorTabBar'
 import type { EditorTab, AppState } from '../../../shared/types'
 

@@ -83,15 +83,9 @@ describe('TeammateTerminalPane', () => {
   })
 
   it('calls useTeammateTerminal with tabId and paneId', async () => {
-    const { useTeammateTerminal } = await import(
-      '../../../renderer/src/hooks/useTeammateTerminal'
-    )
+    const { useTeammateTerminal } = await import('../../../renderer/src/hooks/useTeammateTerminal')
     render(<TeammateTerminalPane agent={makeAgent({ paneId: '%5' })} />, { wrapper })
 
-    expect(useTeammateTerminal).toHaveBeenCalledWith(
-      'tab-default',
-      '%5',
-      expect.any(Object)
-    )
+    expect(useTeammateTerminal).toHaveBeenCalledWith('tab-default', '%5', expect.any(Object))
   })
 })

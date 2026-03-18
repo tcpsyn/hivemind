@@ -21,7 +21,9 @@ export function LeadLayout() {
 
   const teammates = useMemo(() => {
     const id = activeTab.layout.teamLeadId
-    return Array.from(activeTab.agents.values()).filter((a: AgentState) => a.id !== id && a.isTeammate)
+    return Array.from(activeTab.agents.values()).filter(
+      (a: AgentState) => a.id !== id && a.isTeammate
+    )
   }, [activeTab.agents, activeTab.layout.teamLeadId])
 
   const hasTeammates = teammates.length > 0

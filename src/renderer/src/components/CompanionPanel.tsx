@@ -107,7 +107,9 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
         <div className="companion-dashboard-header">
           <span className="companion-dashboard-title">Teammates</span>
           <span className="companion-dashboard-count">{teammates.length}</span>
-          <CollapseButton onClick={() => dispatch({ type: 'TOGGLE_COMPANION', tabId: state.activeTabId })} />
+          <CollapseButton
+            onClick={() => dispatch({ type: 'TOGGLE_COMPANION', tabId: state.activeTabId })}
+          />
         </div>
         <div className="companion-dashboard-list">
           {sortedTeammates.map((agent) => (

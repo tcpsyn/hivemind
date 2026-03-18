@@ -24,25 +24,20 @@ export function useTeammateTerminal(
 
     const termId = `teammate:${paneId}`
 
-    const entry = getOrCreateTerminal(
-      tabId,
-      termId,
-      { cursorBlink: true },
-      (term) => {
-        // IPC output subscription — stays active even when detached from DOM
-        const unsubscribe = window.api.onTeammateOutput((payload) => {
-          if (payload.paneId === paneId && payload.tabId === tabId) {
-            if (isTerminalAttached(tabId, termId)) {
-              term.write(payload.data)
-            } else {
-              bufferOutput(tabId, termId, payload.data)
-            }
+    const entry = getOrCreateTerminal(tabId, termId, { cursorBlink: true }, (term) => {
+      // IPC output subscription — stays active even when detached from DOM
+      const unsubscribe = window.api.onTeammateOutput((payload) => {
+        if (payload.paneId === paneId && payload.tabId === tabId) {
+          if (isTerminalAttached(tabId, termId)) {
+            term.write(payload.data)
+          } else {
+            bufferOutput(tabId, termId, payload.data)
           }
-        })
+        }
+      })
 
-        return unsubscribe
-      }
-    )
+      return unsubscribe
+    })
 
     termRef.current = entry.terminal
     fitRef.current = entry.fitAddon
