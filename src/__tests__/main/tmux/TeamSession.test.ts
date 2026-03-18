@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { EventEmitter } from 'events'
-import { existsSync } from 'fs'
 
 // Mock TmuxProxyServer as an EventEmitter with start/stop/sendInput
 let mockProxyServer: EventEmitter & {

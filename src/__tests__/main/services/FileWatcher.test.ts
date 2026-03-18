@@ -55,11 +55,12 @@ describe('FileWatcher', () => {
       watcher.start('/tmp/project')
 
       const callArgs = vi.mocked(chokidar.watch).mock.calls[0][1]
-      const ignored = callArgs?.ignored as string[]
-      expect(ignored).toContain('**/node_modules/**')
-      expect(ignored).toContain('**/.git/**')
-      expect(ignored).toContain('**/dist/**')
-      expect(ignored).toContain('**/out/**')
+      const ignored = callArgs?.ignored as RegExp[]
+      expect(ignored).toContainEqual(/node_modules/)
+      expect(ignored).toContainEqual(/\.git/)
+      expect(ignored).toContainEqual(/\.claude/)
+      expect(ignored).toContainEqual(/dist/)
+      expect(ignored).toContainEqual(/out/)
     })
 
     it('throws if already watching', () => {

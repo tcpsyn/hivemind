@@ -2,7 +2,7 @@ import * as fs from 'fs/promises'
 import * as path from 'path'
 import type { FileTreeNode } from '../../shared/types'
 
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'out'])
+const IGNORED_DIRS = new Set(['node_modules', '.git', '.claude', 'dist', 'out'])
 
 export class FileService {
   async readFile(filePath: string): Promise<string> {

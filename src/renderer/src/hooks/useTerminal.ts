@@ -4,8 +4,12 @@ import { FitAddon } from '@xterm/addon-fit'
 import {
   getOrCreateTerminal,
   attachTerminal,
-  detachTerminal
+  detachTerminal,
+  isTerminalAttached,
+  bufferOutput
 } from '../terminal/TerminalRegistry'
+
+const RESIZE_DEBOUNCE_MS = 150
 
 export function useTerminal(
   tabId: string,
@@ -53,7 +57,11 @@ export function useTerminal(
               bannerCleared = true
               term.reset()
             }
-            term.write(payload.data)
+            if (isTerminalAttached(tabId, agentId)) {
+              term.write(payload.data)
+            } else {
+              bufferOutput(tabId, agentId, payload.data)
+            }
           }
         })
 
@@ -72,29 +80,34 @@ export function useTerminal(
       window.api.agentInput({ tabId, agentId, data })
     })
 
-    // Resize observer — only active while attached
+    // Resize observer — debounced to avoid fit() cascade during drag
     let lastCols = 0
     let lastRows = 0
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
     const resizeObserver = new ResizeObserver(() => {
-      try {
-        entry.fitAddon.fit()
-        if (
-          entry.terminal.cols &&
-          entry.terminal.rows &&
-          (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
-        ) {
-          lastCols = entry.terminal.cols
-          lastRows = entry.terminal.rows
-          window.api.agentResize?.({ tabId, agentId, cols: lastCols, rows: lastRows })
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        try {
+          entry.fitAddon.fit()
+          if (
+            entry.terminal.cols &&
+            entry.terminal.rows &&
+            (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
+          ) {
+            lastCols = entry.terminal.cols
+            lastRows = entry.terminal.rows
+            window.api.agentResize?.({ tabId, agentId, cols: lastCols, rows: lastRows })
+          }
+        } catch {
+          // ignore resize errors
         }
-      } catch {
-        // ignore resize errors
-      }
+      }, RESIZE_DEBOUNCE_MS)
     })
     resizeObserver.observe(containerRef.current)
 
     return () => {
       dataDisposable.dispose()
+      if (resizeTimer) clearTimeout(resizeTimer)
       resizeObserver.disconnect()
       // Detach from DOM but keep terminal alive in registry
       detachTerminal(tabId, agentId)

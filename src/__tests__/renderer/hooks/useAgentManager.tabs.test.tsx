@@ -3,15 +3,13 @@ import { renderHook, act } from '@testing-library/react'
 import { type ReactNode } from 'react'
 import { AppProvider, useAppState, useAppDispatch } from '../../../renderer/src/state/AppContext'
 import { useAgentManager } from '../../../renderer/src/hooks/useAgentManager'
-import type { AgentState, TeamConfig, AppState } from '../../../shared/types'
+import type { AgentState, TeamConfig } from '../../../shared/types'
 import type {
   AgentStatusChangePayload,
   AgentInputNeededPayload,
   TeammateSpawnedPayload,
   TeammateExitedPayload,
-  TeammateRenamedPayload,
-  TeammateStatusPayload,
-  TeammateOutputPayload
+  TeammateRenamedPayload
 } from '../../../shared/ipc-channels'
 
 type StatusCb = (payload: AgentStatusChangePayload) => void
@@ -19,16 +17,12 @@ type InputCb = (payload: AgentInputNeededPayload) => void
 type SpawnedCb = (payload: TeammateSpawnedPayload) => void
 type ExitedCb = (payload: TeammateExitedPayload) => void
 type RenamedCb = (payload: TeammateRenamedPayload) => void
-type TmStatusCb = (payload: TeammateStatusPayload) => void
-type OutputCb = (payload: TeammateOutputPayload) => void
 
 let capturedStatusCb: StatusCb | null = null
 let capturedInputCb: InputCb | null = null
 let capturedSpawnedCb: SpawnedCb | null = null
 let capturedExitedCb: ExitedCb | null = null
 let capturedRenamedCb: RenamedCb | null = null
-let capturedTmStatusCb: TmStatusCb | null = null
-let capturedOutputCb: OutputCb | null = null
 
 function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
   return {
@@ -50,9 +44,6 @@ beforeEach(() => {
   capturedSpawnedCb = null
   capturedExitedCb = null
   capturedRenamedCb = null
-  capturedTmStatusCb = null
-  capturedOutputCb = null
-
   Object.defineProperty(window, 'api', {
     value: {
       teamStart: vi.fn().mockResolvedValue({ agents: [] }),
@@ -79,14 +70,8 @@ beforeEach(() => {
         capturedRenamedCb = cb
         return vi.fn()
       }),
-      onTeammateStatus: vi.fn().mockImplementation((cb: TmStatusCb) => {
-        capturedTmStatusCb = cb
-        return vi.fn()
-      }),
-      onTeammateOutput: vi.fn().mockImplementation((cb: OutputCb) => {
-        capturedOutputCb = cb
-        return vi.fn()
-      }),
+      onTeammateStatus: vi.fn(() => vi.fn()),
+      onTeammateOutput: vi.fn(() => vi.fn()),
       onTeamAutoStarted: vi.fn(() => vi.fn()),
       onMenuTeamStart: vi.fn(() => vi.fn()),
       onMenuTeamStop: vi.fn(() => vi.fn())
@@ -122,7 +107,6 @@ describe('useAgentManager — Tab-Aware', () => {
       expect(window.api.onTeammateExited).toHaveBeenCalled()
       expect(window.api.onTeammateRenamed).toHaveBeenCalled()
       expect(window.api.onTeammateStatus).toHaveBeenCalled()
-      expect(window.api.onTeammateOutput).toHaveBeenCalled()
     })
   })
 

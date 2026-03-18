@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, dialog } from 'electron'
 import { RendererToMain, MainToRenderer } from '../../shared/ipc-channels'
 import type {
   AgentInputRequest,
@@ -95,12 +95,19 @@ export function registerIpcHandlers(services: IpcServices): void {
   ipcMain.handle(RendererToMain.TEAMMATE_RESIZE, (_event, req: TeammateResizeRequest) =>
     services.onTeammateResize(req)
   )
+
+  ipcMain.handle('dialog:open-folder', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
 }
 
 export function removeIpcHandlers(): void {
   Object.values(RendererToMain).forEach((channel) => {
     ipcMain.removeHandler(channel)
   })
+  ipcMain.removeHandler('dialog:open-folder')
 }
 
 // Helper to push events from main to renderer

@@ -78,6 +78,7 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
       if (tab.session) {
         await tab.session.stop()
       }
+      tab.ptyManager.removeAllListeners()
       tab.ptyManager.destroyAll()
       tabs.delete(req.tabId)
     },

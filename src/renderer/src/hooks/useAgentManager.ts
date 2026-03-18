@@ -35,6 +35,15 @@ export function useAgentManager() {
     const unsubAutoStart = window.api?.onTeamAutoStarted?.(
       (data: { tabId: string; projectName: string; projectPath: string; agents: AgentState[] }) => {
         const tabId = data.tabId
+
+        // Create the tab in renderer state if it doesn't exist (auto-start uses dynamic IDs)
+        dispatch({
+          type: 'CREATE_TAB',
+          payload: { id: tabId, projectPath: data.projectPath, projectName: data.projectName }
+        })
+        // Remove the placeholder default tab if this is the first real tab
+        dispatch({ type: 'CLOSE_TAB', payload: 'tab-default' })
+
         const agentIds = getAgentIds(tabId)
 
         for (const agent of data.agents) {
@@ -168,24 +177,11 @@ export function useAgentManager() {
           id: payload.agentId,
           model: payload.model,
           contextPercent: payload.contextPercent,
-          branch: payload.branch
+          branch: payload.branch,
+          lastActivity: Date.now()
         },
         tabId: payload.tabId
       })
-    })
-
-    const unsubOutput = window.api?.onTeammateOutput?.((payload) => {
-      const entry = paneToAgent.get(payload.paneId)
-      if (entry) {
-        const agentIds = getAgentIds(entry.tabId)
-        if (agentIds.has(entry.agentId)) {
-          dispatch({
-            type: 'UPDATE_AGENT',
-            payload: { id: entry.agentId, lastActivity: Date.now() },
-            tabId: entry.tabId
-          })
-        }
-      }
     })
 
     return () => {
@@ -193,7 +189,6 @@ export function useAgentManager() {
       unsubExited?.()
       unsubRenamed?.()
       unsubStatus?.()
-      unsubOutput?.()
     }
   }, [dispatch])
 

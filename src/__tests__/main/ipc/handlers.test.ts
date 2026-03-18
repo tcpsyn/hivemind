@@ -59,7 +59,8 @@ describe('IPC Handlers', () => {
     it('registers a handler for every RendererToMain channel', () => {
       const services = createMockServices()
       registerIpcHandlers(services)
-      expect(handlers.size).toBe(Object.keys(RendererToMain).length)
+      // +1 for dialog:open-folder which isn't in RendererToMain enum
+      expect(handlers.size).toBe(Object.keys(RendererToMain).length + 1)
     })
   })
 

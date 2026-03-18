@@ -4,8 +4,12 @@ import { FitAddon } from '@xterm/addon-fit'
 import {
   getOrCreateTerminal,
   attachTerminal,
-  detachTerminal
+  detachTerminal,
+  isTerminalAttached,
+  bufferOutput
 } from '../terminal/TerminalRegistry'
+
+const RESIZE_DEBOUNCE_MS = 150
 
 export function useTeammateTerminal(
   tabId: string,
@@ -28,7 +32,11 @@ export function useTeammateTerminal(
         // IPC output subscription — stays active even when detached from DOM
         const unsubscribe = window.api.onTeammateOutput((payload) => {
           if (payload.paneId === paneId && payload.tabId === tabId) {
-            term.write(payload.data)
+            if (isTerminalAttached(tabId, termId)) {
+              term.write(payload.data)
+            } else {
+              bufferOutput(tabId, termId, payload.data)
+            }
           }
         })
 
@@ -47,29 +55,34 @@ export function useTeammateTerminal(
       window.api.sendTeammateInput({ tabId, paneId, data })
     })
 
-    // Resize observer — only active while attached
+    // Resize observer — debounced to avoid fit() cascade during drag
     let lastCols = 0
     let lastRows = 0
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null
     const resizeObserver = new ResizeObserver(() => {
-      try {
-        entry.fitAddon.fit()
-        if (
-          entry.terminal.cols &&
-          entry.terminal.rows &&
-          (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
-        ) {
-          lastCols = entry.terminal.cols
-          lastRows = entry.terminal.rows
-          window.api.teammateResize?.({ tabId, paneId, cols: lastCols, rows: lastRows })
+      if (resizeTimer) clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(() => {
+        try {
+          entry.fitAddon.fit()
+          if (
+            entry.terminal.cols &&
+            entry.terminal.rows &&
+            (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
+          ) {
+            lastCols = entry.terminal.cols
+            lastRows = entry.terminal.rows
+            window.api.teammateResize?.({ tabId, paneId, cols: lastCols, rows: lastRows })
+          }
+        } catch {
+          // ignore resize errors
         }
-      } catch {
-        // ignore resize errors
-      }
+      }, RESIZE_DEBOUNCE_MS)
     })
     resizeObserver.observe(containerRef.current)
 
     return () => {
       dataDisposable.dispose()
+      if (resizeTimer) clearTimeout(resizeTimer)
       resizeObserver.disconnect()
       // Detach from DOM but keep terminal alive in registry
       detachTerminal(tabId, termId)

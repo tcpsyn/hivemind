@@ -60,7 +60,8 @@ function createMockTabServices(): TabServices {
       getAll: vi.fn().mockReturnValue(new Map([['agent-1', agent]])),
       on: vi.fn(),
       emit: vi.fn(),
-      removeListener: vi.fn()
+      removeListener: vi.fn(),
+      removeAllListeners: vi.fn()
     } as any,
     fileService: {
       readFile: vi.fn().mockResolvedValue('file content'),

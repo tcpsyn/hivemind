@@ -16,7 +16,6 @@
 .topbar-project-tabs {
   display: flex;
   align-items: center;
-  flex: 1;
   min-width: 0;
   gap: var(--space-1);
   -webkit-app-region: no-drag;
@@ -188,6 +187,13 @@
   height: 1px;
   margin: var(--space-1) 0;
   background: var(--border-primary);
+}
+
+/* Drag spacer between project tabs and feature tabs */
+.topbar-drag-spacer {
+  flex: 1;
+  min-width: 40px;
+  -webkit-app-region: drag;
 }
 
 /* Right side — feature tabs */

@@ -1,5 +1,6 @@
 import * as net from 'net'
 import * as fs from 'fs'
+import * as fsPromises from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { EventEmitter } from 'events'
@@ -43,6 +44,7 @@ interface PaneStreamState {
   interval: ReturnType<typeof setInterval>
   outFile: string
   bytesRead: number
+  reading?: boolean
 }
 
 export class TmuxProxyServer extends EventEmitter {
@@ -447,7 +449,7 @@ export class TmuxProxyServer extends EventEmitter {
     const outFile = join(tmpdir(), `cc-pane-${safeId}-${Date.now()}.out`)
 
     // Create the output file
-    fs.writeFileSync(outFile, '')
+    await fsPromises.writeFile(outFile, '')
 
     // Use tmux pipe-pane to stream output to the file
     try {
@@ -462,23 +464,31 @@ export class TmuxProxyServer extends EventEmitter {
 
     // Poll the file for new content
     const state: PaneStreamState = {
-      interval: setInterval(() => this.readNewOutput(paneId, state), 200),
+      interval: setInterval(() => {
+        if (!state.reading) {
+          state.reading = true
+          this.readNewOutput(paneId, state).finally(() => { state.reading = false })
+        }
+      }, 200),
       outFile,
       bytesRead: 0
     }
     this.paneStreams.set(paneId, state)
   }
 
-  private readNewOutput(paneId: string, state: PaneStreamState): void {
+  private async readNewOutput(paneId: string, state: PaneStreamState): Promise<void> {
     try {
-      const stats = fs.statSync(state.outFile)
+      const stats = await fsPromises.stat(state.outFile)
       if (stats.size > state.bytesRead) {
-        const buf = Buffer.alloc(stats.size - state.bytesRead)
-        const fd = fs.openSync(state.outFile, 'r')
-        fs.readSync(fd, buf, 0, buf.length, state.bytesRead)
-        fs.closeSync(fd)
-        state.bytesRead = stats.size
-        this.emit('teammate-output', { paneId, data: buf })
+        const fh = await fsPromises.open(state.outFile, 'r')
+        try {
+          const buf = Buffer.alloc(stats.size - state.bytesRead)
+          await fh.read(buf, 0, buf.length, state.bytesRead)
+          state.bytesRead = stats.size
+          this.emit('teammate-output', { paneId, data: buf })
+        } finally {
+          await fh.close()
+        }
       }
     } catch {
       // File might not exist yet
@@ -512,11 +522,7 @@ export class TmuxProxyServer extends EventEmitter {
     if (state) {
       clearInterval(state.interval)
       if (state.outFile) {
-        try {
-          fs.unlinkSync(state.outFile)
-        } catch {
-          // ignore
-        }
+        fsPromises.unlink(state.outFile).catch(() => {})
       }
       this.paneStreams.delete(paneId)
     }
@@ -538,11 +544,11 @@ export class TmuxProxyServer extends EventEmitter {
 
     if (pane?.tty) {
       try {
-        const fd = fs.openSync(pane.tty, 'w')
+        const fh = await fsPromises.open(pane.tty, 'w')
         try {
-          fs.writeSync(fd, data)
+          await fh.write(data)
         } finally {
-          fs.closeSync(fd)
+          await fh.close()
         }
         return
       } catch {

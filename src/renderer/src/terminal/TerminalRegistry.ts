@@ -6,6 +6,8 @@ export interface TerminalEntry {
   terminal: Terminal
   fitAddon: FitAddon
   cleanup: () => void
+  isAttached: boolean
+  pendingOutput: string[]
 }
 
 const entries = new Map<string, TerminalEntry>()
@@ -48,7 +50,7 @@ export function getOrCreateTerminal(
 
   const cleanup = setupFn ? setupFn(terminal) : () => {}
 
-  const entry: TerminalEntry = { terminal, fitAddon, cleanup }
+  const entry: TerminalEntry = { terminal, fitAddon, cleanup, isAttached: false, pendingOutput: [] }
   entries.set(key, entry)
   return entry
 }
@@ -73,6 +75,16 @@ export function attachTerminal(
     container.appendChild(terminal.element)
   }
 
+  entry.isAttached = true
+
+  // Flush any output that arrived while detached
+  if (entry.pendingOutput.length > 0) {
+    for (const data of entry.pendingOutput) {
+      terminal.write(data)
+    }
+    entry.pendingOutput = []
+  }
+
   try {
     fitAddon.fit()
   } catch {
@@ -86,8 +98,25 @@ export function attachTerminal(
  */
 export function detachTerminal(tabId: string, id: string): void {
   const entry = entries.get(makeKey(tabId, id))
-  if (!entry?.terminal.element?.parentElement) return
-  entry.terminal.element.parentElement.removeChild(entry.terminal.element)
+  if (!entry) return
+  entry.isAttached = false
+  if (entry.terminal.element?.parentElement) {
+    entry.terminal.element.parentElement.removeChild(entry.terminal.element)
+  }
+}
+
+/** Returns whether a terminal is currently attached to the DOM. */
+export function isTerminalAttached(tabId: string, id: string): boolean {
+  const entry = entries.get(makeKey(tabId, id))
+  return entry?.isAttached ?? false
+}
+
+/** Buffers output data for a detached terminal (replayed on reattach). */
+export function bufferOutput(tabId: string, id: string, data: string): void {
+  const entry = entries.get(makeKey(tabId, id))
+  if (entry) {
+    entry.pendingOutput.push(data)
+  }
 }
 
 /** Disposes a single terminal and removes it from the registry. */

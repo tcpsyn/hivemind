@@ -49,6 +49,7 @@ export interface ElectronApi {
   // Tab management
   tabCreate: (req: TabCreateRequest) => Promise<TabCreateResponse>
   tabClose: (req: TabCloseRequest) => Promise<void>
+  openFolderDialog: () => Promise<string | null>
 
   // Main → Renderer (event listeners)
   onAgentOutput: (callback: (payload: AgentOutputPayload) => void) => () => void
@@ -95,6 +96,7 @@ const api: ElectronApi = {
   // Tab management
   tabCreate: (req) => ipcRenderer.invoke(RendererToMain.TAB_CREATE, req),
   tabClose: (req) => ipcRenderer.invoke(RendererToMain.TAB_CLOSE, req),
+  openFolderDialog: () => ipcRenderer.invoke('dialog:open-folder'),
 
   // Main → Renderer
   onAgentOutput: createOnHandler(MainToRenderer.AGENT_OUTPUT),
