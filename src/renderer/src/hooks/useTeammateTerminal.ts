@@ -18,23 +18,29 @@ export function useTeammateTerminal(
 
     const termId = `teammate:${paneId}`
 
-    const entry = getOrCreateTerminal(tabId, termId, { cursorBlink: true }, (term) => {
-      // IPC output subscription — writes directly to xterm buffer even when detached.
-      // xterm.js updates its internal buffer without canvas rendering when not in DOM,
-      // and paints correctly on reattach.
-      const unsubscribe = window.api.onTeammateOutput((payload) => {
-        if (payload.paneId === paneId && payload.tabId === tabId) {
-          term.write(payload.data)
-        }
-      })
+    const entry = getOrCreateTerminal(
+      tabId,
+      termId,
+      { cursorBlink: false, cursorStyle: 'bar', cursorInactiveStyle: 'none' },
+      (term) => {
+        // IPC output subscription — writes directly to xterm buffer even when detached.
+        // xterm.js updates its internal buffer without canvas rendering when not in DOM,
+        // and paints correctly on reattach.
+        const unsubscribe = window.api.onTeammateOutput((payload) => {
+          if (payload.paneId === paneId && payload.tabId === tabId) {
+            term.write(payload.data)
+          }
+        })
 
-      return unsubscribe
-    })
+        return unsubscribe
+      }
+    )
 
     termRef.current = entry.terminal
     fitRef.current = entry.fitAddon
 
     // Attach to DOM (open or re-attach)
+    const isReattach = !!entry.terminal.element
     attachTerminal(tabId, termId, containerRef.current)
 
     // Input handler — only active while attached
@@ -42,34 +48,82 @@ export function useTeammateTerminal(
       window.api.sendTeammateInput({ tabId, paneId, data })
     })
 
-    // Resize observer — debounced to avoid fit() cascade during drag
+    if (isReattach) {
+      // Scroll to bottom so the most recent output is visible when switching panes
+      entry.terminal.scrollToBottom()
+    }
+
+    // Track whether we need a capture-pane snapshot (first mount + every reattach)
+    let snapshotNeeded = true
+
+    // Resize observer — fires on initial observe AND on size changes.
+    // This is the ONLY place we fit + resize, ensuring we always have
+    // correct container dimensions (measured by the browser, not guessed).
     let lastCols = 0
     let lastRows = 0
     let resizeTimer: ReturnType<typeof setTimeout> | null = null
+    const doFitAndResize = () => {
+      try {
+        entry.fitAddon.fit()
+        const cols = entry.terminal.cols
+        const rows = entry.terminal.rows
+        if (!cols || !rows) return
+
+        if (cols !== lastCols || rows !== lastRows) {
+          lastCols = cols
+          lastRows = rows
+
+          if (snapshotNeeded) {
+            snapshotNeeded = false
+            window.api.teammateOutputReady({ tabId, paneId, cols, rows })
+          } else {
+            window.api.teammateResize?.({ tabId, paneId, cols, rows })
+          }
+        } else if (snapshotNeeded) {
+          snapshotNeeded = false
+          window.api.teammateOutputReady({ tabId, paneId, cols, rows })
+        }
+      } catch {
+        // ignore resize errors
+      }
+    }
+
     const resizeObserver = new ResizeObserver(() => {
       if (resizeTimer) clearTimeout(resizeTimer)
-      resizeTimer = setTimeout(() => {
-        try {
-          entry.fitAddon.fit()
-          if (
-            entry.terminal.cols &&
-            entry.terminal.rows &&
-            (entry.terminal.cols !== lastCols || entry.terminal.rows !== lastRows)
-          ) {
-            lastCols = entry.terminal.cols
-            lastRows = entry.terminal.rows
-            window.api.teammateResize?.({ tabId, paneId, cols: lastCols, rows: lastRows })
-          }
-        } catch {
-          // ignore resize errors
-        }
-      }, RESIZE_DEBOUNCE_MS)
+      resizeTimer = setTimeout(
+        () => {
+          // Use rAF to ensure browser has completed flex layout before measuring
+          requestAnimationFrame(doFitAndResize)
+        },
+        isReattach ? 50 : RESIZE_DEBOUNCE_MS
+      )
     })
     resizeObserver.observe(containerRef.current)
+
+    // Fallback: if ResizeObserver doesn't fire within 200ms (e.g., container
+    // size unchanged on reattach), force fit + snapshot manually.
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null
+    if (snapshotNeeded) {
+      fallbackTimer = setTimeout(() => {
+        if (!snapshotNeeded) return // Observer already handled it
+        try {
+          entry.fitAddon.fit()
+          const cols = entry.terminal.cols || 80
+          const rows = entry.terminal.rows || 24
+          snapshotNeeded = false
+          lastCols = cols
+          lastRows = rows
+          window.api.teammateOutputReady({ tabId, paneId, cols, rows })
+        } catch {
+          // ignore
+        }
+      }, 200)
+    }
 
     return () => {
       dataDisposable.dispose()
       if (resizeTimer) clearTimeout(resizeTimer)
+      if (fallbackTimer) clearTimeout(fallbackTimer)
       resizeObserver.disconnect()
       // Detach from DOM but keep terminal alive in registry
       detachTerminal(tabId, termId)

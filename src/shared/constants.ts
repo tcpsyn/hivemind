@@ -49,5 +49,23 @@ export const TERMINAL_THEME = {
   cursor: '#e0e0e0',
   cursorAccent: '#1a1a2e',
   selectionBackground: '#2a3a66',
-  selectionForeground: '#e0e0e0'
+  selectionForeground: '#e0e0e0',
+  // ANSI normal colors — tuned for #1a1a2e background
+  black: '#282a36',
+  red: '#ff5555',
+  green: '#50fa7b',
+  yellow: '#f1fa8c',
+  blue: '#6272a4',
+  magenta: '#bd93f9',
+  cyan: '#8be9fd',
+  white: '#e0e0e0',
+  // ANSI bright colors
+  brightBlack: '#6272a4',
+  brightRed: '#ff6e6e',
+  brightGreen: '#69ff94',
+  brightYellow: '#ffffa5',
+  brightBlue: '#d6acff',
+  brightMagenta: '#ff92df',
+  brightCyan: '#a4ffff',
+  brightWhite: '#ffffff'
 } as const

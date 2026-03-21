@@ -4,6 +4,7 @@ import './MonacoEditor.css'
 
 interface MonacoEditorProps {
   filePath: string
+  content: string
   language: string
   isReadOnly: boolean
   onContentChange: (content: string) => void
@@ -11,12 +12,16 @@ interface MonacoEditorProps {
 
 export default function MonacoEditor({
   filePath,
+  content,
   language,
   isReadOnly,
   onContentChange
 }: MonacoEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const onContentChangeRef = useRef(onContentChange)
+  onContentChangeRef.current = onContentChange
+  const suppressChangeRef = useRef(false)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -24,6 +29,7 @@ export default function MonacoEditor({
     monaco.editor.setTheme('vs-dark')
 
     const editor = monaco.editor.create(containerRef.current, {
+      value: content,
       language,
       readOnly: isReadOnly,
       theme: 'vs-dark',
@@ -39,21 +45,27 @@ export default function MonacoEditor({
 
     editorRef.current = editor
 
-    window.api.fileRead({ filePath }).then((res) => {
-      if (editorRef.current) {
-        editorRef.current.setValue(res.content)
-      }
-    })
-
     const disposable = editor.onDidChangeModelContent(() => {
-      onContentChange(editor.getValue())
+      if (!suppressChangeRef.current) {
+        onContentChangeRef.current(editor.getValue())
+      }
     })
 
     return () => {
       disposable.dispose()
       editor.dispose()
+      editorRef.current = null
     }
   }, [filePath, language])
+
+  // Sync content from parent (e.g., file reload) without destroying the editor
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.getValue() !== content) {
+      suppressChangeRef.current = true
+      editorRef.current.setValue(content)
+      suppressChangeRef.current = false
+    }
+  }, [content])
 
   useEffect(() => {
     if (editorRef.current) {

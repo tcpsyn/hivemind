@@ -2,9 +2,9 @@
   display: grid;
   grid-template-columns: repeat(var(--grid-cols, 2), 1fr);
   grid-template-rows: repeat(var(--grid-rows, 2), 1fr);
-  gap: 4px;
+  gap: var(--space-1);
   height: 100%;
-  padding: 4px;
+  padding: var(--space-1);
   min-height: 0;
   overflow: hidden;
 }
@@ -12,19 +12,21 @@
 .pane-grid.maximized {
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
+  gap: 0;
+  padding: 0;
 }
 
 .pane-grid .terminal-pane {
   animation: pane-appear 200ms ease-out;
 }
 
+/* Opacity-only animation prevents ResizeObserver from getting wrong dimensions
+   during scale transforms, which caused fit() to compute wrong cols/rows */
 @keyframes pane-appear {
   from {
     opacity: 0;
-    transform: scale(0.98);
   }
   to {
     opacity: 1;
-    transform: scale(1);
   }
 }

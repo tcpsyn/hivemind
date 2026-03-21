@@ -122,7 +122,27 @@ export function CompanionPanel({ teammates }: CompanionPanelProps) {
           ))}
         </div>
       </div>
-      <div className="companion-divider" onMouseDown={handleDividerMouseDown} />
+      <div
+        className="companion-divider"
+        onMouseDown={handleDividerMouseDown}
+        onKeyDown={(e) => {
+          const panel = panelRef.current
+          if (!panel) return
+          const step = e.shiftKey ? 50 : 10
+          const current = dashboardHeight ?? panel.clientHeight * 0.4
+          if (e.key === 'ArrowDown') {
+            e.preventDefault()
+            setDashboardHeight(Math.min(panel.clientHeight - MIN_TERMINAL_HEIGHT, current + step))
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault()
+            setDashboardHeight(Math.max(MIN_DASHBOARD_HEIGHT, current - step))
+          }
+        }}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize teammate list and terminal"
+        tabIndex={0}
+      />
       <div className="companion-terminal">
         {selectedAgent ? (
           selectedAgent.paneId ? (

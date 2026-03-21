@@ -58,6 +58,7 @@ export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
           <button
             className="sidebar-section-header"
             onClick={() => setAgentsCollapsed(!agentsCollapsed)}
+            aria-expanded={!agentsCollapsed}
           >
             <span className="sidebar-section-chevron">{agentsCollapsed ? '\u25b6' : '\u25bc'}</span>
             <span>Agents</span>
@@ -76,6 +77,7 @@ export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
           <button
             className="sidebar-section-header"
             onClick={() => setFilesCollapsed(!filesCollapsed)}
+            aria-expanded={!filesCollapsed}
           >
             <span className="sidebar-section-chevron">{filesCollapsed ? '\u25b6' : '\u25bc'}</span>
             <span>Files</span>
@@ -92,6 +94,26 @@ export default function Sidebar({ onAgentContextMenu }: SidebarProps) {
         className="sidebar-resize-handle"
         data-testid="sidebar-resize-handle"
         onMouseDown={handleMouseDown}
+        onKeyDown={(e) => {
+          const step = e.shiftKey ? 50 : 10
+          if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            dispatch({
+              type: 'SET_SIDEBAR_WIDTH',
+              payload: Math.min(500, (state.globalLayout.sidebarWidth || 200) + step)
+            })
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            dispatch({
+              type: 'SET_SIDEBAR_WIDTH',
+              payload: Math.max(48, (state.globalLayout.sidebarWidth || 200) - step)
+            })
+          }
+        }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        tabIndex={0}
       />
     </div>
   )

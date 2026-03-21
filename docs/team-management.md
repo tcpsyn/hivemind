@@ -15,16 +15,17 @@ agents:
   - name: Lead
     role: team-lead
     command: claude --team-lead
-    avatar: robot-1      # optional
-    color: "#FF6B6B"     # optional
+    avatar: robot-1 # optional
+    color: '#FF6B6B' # optional
   - name: Backend
     role: backend-dev
     command: claude --agent
-    avatar: gear          # optional
-    color: "#4ECDC4"     # optional
+    avatar: gear # optional
+    color: '#4ECDC4' # optional
 ```
 
 **Required fields:**
+
 - `name` — Team name
 - `project` — Absolute path to the project directory
 - `agents` — Array of at least one agent config:
@@ -33,6 +34,7 @@ agents:
   - `command` — Shell command to run
 
 **Optional agent fields:**
+
 - `avatar` — One of 12 SVG icons (see [Configuration](./configuration.md#agent-avatars))
 - `color` — Hex color for the agent's UI accent
 
@@ -45,6 +47,7 @@ Configs are validated with Zod schemas (`src/shared/validators.ts`). Invalid con
 ## Starting a Team
 
 Teams can be started two ways:
+
 1. **Menu**: `Cmd+Shift+S` opens a file dialog to select a YAML config
 2. **API**: Renderer calls `window.api.teamStart({ config })`
 
@@ -68,8 +71,10 @@ Teams can be started two ways:
    │
    └── Spawn lead agent via PtyManager.createPty() with env vars:
        TMUX={socket_path,pid,0}
+       TMUX_PANE={lead-pane-id}
        CC_FRONTEND_SOCKET={proxy-socket-path}
        CC_TMUX_SOCKET={socket-name}
+       CC_TMUX_SESSION={session-name}
        REAL_TMUX=/path/to/tmux
        CLAUDECODE=1
        CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
@@ -95,12 +100,14 @@ Teams can be started two ways:
 ### Pane Discovery
 
 Every 2 seconds, the proxy runs:
+
 ```
 tmux list-panes -t {session} -a -F '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
 ```
 
 New panes (not in `knownPanes`) trigger teammate detection:
-1. Extract agent metadata from the Claude command via `parseClaudeCommand()` (looks for `--agent-name`, `--agent-color`, `--agent-type` flags)
+
+1. Extract agent metadata from the Claude command via `parseClaudeCommand()` (looks for `--agent-id`, `--agent-name`, `--team-name`, `--agent-color`, `--agent-type`, `--permission-mode`, `--model`, `--parent-session-id` flags)
 2. If no name found, poll child processes with `pgrep -P {pid} -a`
 3. Emit `teammate-detected` with the agent state
 
@@ -109,16 +116,20 @@ New panes (not in `knownPanes`) trigger teammate detection:
 For each discovered pane, the proxy sets up streaming:
 
 **Primary method** — `tmux pipe-pane`:
+
 ```
-tmux pipe-pane -t {paneId} -o 'cat >> {tempFile}'
+tmux pipe-pane -t {paneId} -o 'tee -a "{outFile}" > /dev/null'
 ```
+
 The proxy polls the temp file every 200ms for new content.
 
 **Fallback** — `tmux capture-pane`:
+
 ```
-tmux capture-pane -t {paneId} -p
+tmux capture-pane -t {paneId} -p -J
 ```
-Polled every 500ms. Used when pipe-pane is unavailable.
+
+The `-J` flag joins wrapped lines. For reattach snapshots, `-e` is also used to include escape sequences. Polled every 500ms. Used when pipe-pane is unavailable or goes silent.
 
 ### Input Handling
 
@@ -149,7 +160,7 @@ When a pane disappears from `tmux list-panes`, the proxy emits `teammate-exited`
 
 When an agent needs user input:
 
-1. PtyManager checks output against `INPUT_PROMPT_PATTERNS` (❯, $, >, ?, y/n prompts)
+1. PtyManager checks output against `INPUT_PROMPT_PATTERNS` (❯, (y/n), [Y/n], [y/N], (yes/no))
 2. Sets `agent.needsInput = true`
 3. Emits `input-needed` event
 4. NotificationService shows native OS notification (debounced: 10s minimum between notifications per agent)

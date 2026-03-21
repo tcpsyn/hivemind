@@ -70,7 +70,7 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.AGENT_INPUT)!
-      const req = { agentId: 'a1', data: 'hello' }
+      const req = { tabId: 'tab-1', agentId: 'a1', data: 'hello' }
       await handler({}, req)
       expect(services.onAgentInput).toHaveBeenCalledWith(req)
     })
@@ -80,7 +80,7 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.AGENT_STOP)!
-      const req = { agentId: 'a1' }
+      const req = { tabId: 'tab-1', agentId: 'a1' }
       await handler({}, req)
       expect(services.onAgentStop).toHaveBeenCalledWith(req)
     })
@@ -90,7 +90,7 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.AGENT_RESIZE)!
-      const req = { agentId: 'a1', cols: 120, rows: 40 }
+      const req = { tabId: 'tab-1', agentId: 'a1', cols: 120, rows: 40 }
       await handler({}, req)
       expect(services.onAgentResize).toHaveBeenCalledWith(req)
     })
@@ -100,7 +100,7 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.FILE_READ)!
-      const req = { filePath: '/test.ts' }
+      const req = { tabId: 'tab-1', filePath: '/test.ts' }
       await handler({}, req)
       expect(services.onFileRead).toHaveBeenCalledWith(req)
     })
@@ -110,7 +110,10 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.TEAM_START)!
-      const req = { config: { name: 'team', project: '/p', agents: [] } }
+      const req = {
+        tabId: 'tab-1',
+        config: { name: 'team', project: '/p', agents: [{ name: 'a', role: 'r', command: 'c' }] }
+      }
       await handler({}, req)
       expect(services.onTeamStart).toHaveBeenCalledWith(req)
     })
@@ -120,8 +123,18 @@ describe('IPC Handlers', () => {
       registerIpcHandlers(services)
 
       const handler = handlers.get(RendererToMain.TEAM_STOP)!
-      await handler({})
-      expect(services.onTeamStop).toHaveBeenCalled()
+      const req = { tabId: 'tab-1' }
+      await handler({}, req)
+      expect(services.onTeamStop).toHaveBeenCalledWith(req)
+    })
+
+    it('rejects invalid IPC payloads', () => {
+      const services = createMockServices()
+      registerIpcHandlers(services)
+
+      const handler = handlers.get(RendererToMain.AGENT_INPUT)!
+      expect(() => handler({}, { agentId: 'a1', data: 'hello' })).toThrow('IPC validation failed')
+      expect(services.onAgentInput).not.toHaveBeenCalled()
     })
   })
 

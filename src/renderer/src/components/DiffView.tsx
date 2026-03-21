@@ -50,10 +50,6 @@ export default function DiffView({ filePath, language }: DiffViewProps) {
   }, [filePath, language, sideBySide])
 
   const handleToggle = () => {
-    if (editorRef.current) {
-      editorRef.current.dispose()
-      editorRef.current = null
-    }
     setSideBySide((prev) => !prev)
   }
 

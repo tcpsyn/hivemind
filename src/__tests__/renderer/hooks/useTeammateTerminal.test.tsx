@@ -22,7 +22,10 @@ const { mockTerminal, mockElement, mockFitAddon, mockOnTeammateOutput, mockSendT
       loadAddon: vi.fn(),
       focus: vi.fn(),
       refresh: vi.fn(),
+      scrollToBottom: vi.fn(),
       options: {},
+      cols: 120,
+      rows: 36,
       element: undefined as HTMLDivElement | undefined
     }
 
@@ -53,11 +56,30 @@ Object.defineProperty(window, 'api', {
   value: {
     onTeammateOutput: mockOnTeammateOutput,
     sendTeammateInput: mockSendTeammateInput,
-    teammateResize: vi.fn()
+    teammateResize: vi.fn(),
+    teammateOutputReady: vi.fn().mockResolvedValue(undefined)
   },
   writable: true,
   configurable: true
 })
+
+// Mock ResizeObserver — jsdom doesn't implement it.
+// Capture the callback so tests can trigger it manually.
+let resizeObserverCallback: (() => void) | null = null
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    constructor(cb: () => void) {
+      resizeObserverCallback = cb
+    }
+    observe() {
+      // Fire callback on next tick to simulate browser behavior
+      setTimeout(() => resizeObserverCallback?.(), 0)
+    }
+    disconnect() {}
+    unobserve() {}
+  }
+)
 
 // Import after mocks
 const { useTeammateTerminal } = await import('../../../renderer/src/hooks/useTeammateTerminal')
@@ -196,6 +218,73 @@ describe('useTeammateTerminal', () => {
 
     expect(mockTerminal.open).toHaveBeenCalledTimes(1)
     expect(container2.contains(mockElement)).toBe(true)
+  })
+
+  it('sends output-ready ack via ResizeObserver (first mount)', async () => {
+    const containerRef = { current: document.createElement('div') }
+    renderHook(() => useTeammateTerminal(TAB_ID, '%1', containerRef), { wrapper })
+
+    // Wait for ResizeObserver mock setTimeout(0) + debounce(150ms) + rAF
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250))
+    })
+
+    expect(window.api.teammateOutputReady).toHaveBeenCalledWith({
+      tabId: TAB_ID,
+      paneId: '%1',
+      cols: 120,
+      rows: 36
+    })
+  })
+
+  it('sends output-ready via ResizeObserver on reattach', async () => {
+    const container1 = document.createElement('div')
+    const container2 = document.createElement('div')
+
+    const containerRef1 = { current: container1 }
+    const { unmount } = renderHook(() => useTeammateTerminal(TAB_ID, '%1', containerRef1), {
+      wrapper
+    })
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250))
+    })
+
+    unmount()
+
+    // Clear mock to isolate reattach call
+    ;(window.api.teammateOutputReady as ReturnType<typeof vi.fn>).mockClear()
+
+    const containerRef2 = { current: container2 }
+    renderHook(() => useTeammateTerminal(TAB_ID, '%1', containerRef2), { wrapper })
+
+    // Wait for ResizeObserver mock setTimeout(0) + debounce(50ms) + rAF
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 150))
+    })
+
+    expect(window.api.teammateOutputReady).toHaveBeenCalledWith({
+      tabId: TAB_ID,
+      paneId: '%1',
+      cols: 120,
+      rows: 36
+    })
+  })
+
+  it('scrolls to bottom on reattach', () => {
+    const container1 = document.createElement('div')
+    const container2 = document.createElement('div')
+
+    const containerRef1 = { current: container1 }
+    const { unmount } = renderHook(() => useTeammateTerminal(TAB_ID, '%1', containerRef1), {
+      wrapper
+    })
+    unmount()
+
+    const containerRef2 = { current: container2 }
+    renderHook(() => useTeammateTerminal(TAB_ID, '%1', containerRef2), { wrapper })
+
+    expect(mockTerminal.scrollToBottom).toHaveBeenCalled()
   })
 
   it('does not open terminal if container ref is null', () => {

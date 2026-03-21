@@ -46,7 +46,9 @@ describe('useEditor', () => {
     await vi.waitFor(() => {
       expect(result.current.content).toBe('file content here')
     })
-    expect(mockFileRead).toHaveBeenCalledWith({ filePath: '/path/to/file.ts' })
+    expect(mockFileRead).toHaveBeenCalledWith(
+      expect.objectContaining({ filePath: '/path/to/file.ts' })
+    )
   })
 
   it('reloads content when filePath changes', async () => {
@@ -133,10 +135,12 @@ describe('useEditor', () => {
     await act(async () => {
       vi.advanceTimersByTime(200)
     })
-    expect(mockFileWrite).toHaveBeenCalledWith({
-      filePath: '/file.ts',
-      content: 'changed'
-    })
+    expect(mockFileWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: '/file.ts',
+        content: 'changed'
+      })
+    )
   })
 
   it('resets debounce timer on rapid changes', async () => {
@@ -175,10 +179,12 @@ describe('useEditor', () => {
     await act(async () => {
       vi.advanceTimersByTime(200)
     })
-    expect(mockFileWrite).toHaveBeenCalledWith({
-      filePath: '/file.ts',
-      content: 'change 2'
-    })
+    expect(mockFileWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: '/file.ts',
+        content: 'change 2'
+      })
+    )
   })
 
   it('does not auto-save in read-only mode', async () => {
@@ -250,10 +256,12 @@ describe('useEditor', () => {
       await result.current.save()
     })
 
-    expect(mockFileWrite).toHaveBeenCalledWith({
-      filePath: '/file.ts',
-      content: 'changed'
-    })
+    expect(mockFileWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filePath: '/file.ts',
+        content: 'changed'
+      })
+    )
     expect(result.current.isModified).toBe(false)
   })
 

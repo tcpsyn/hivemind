@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { AppProvider } from '../../../renderer/src/state/AppContext'
+import { AppProvider, useAppState } from '../../../renderer/src/state/AppContext'
 import FileTree from '../../../renderer/src/components/FileTree'
 import type { FileTreeNode } from '../../../shared/types'
 import type { ReactNode } from 'react'
@@ -312,6 +312,49 @@ describe('FileTree', () => {
       // Collapse src with ArrowLeft
       fireEvent.keyDown(tree, { key: 'ArrowLeft' })
       await waitFor(() => expect(screen.queryByText('index.ts')).not.toBeInTheDocument())
+    })
+  })
+
+  describe('double-click to open in editor', () => {
+    function StateInspector() {
+      const state = useAppState()
+      return <span data-testid="feature-tab">{state.activeFeatureTab}</span>
+    }
+
+    it('double-clicking a file switches to editor view', async () => {
+      const user = userEvent.setup()
+      mockFileTreeRequest.mockResolvedValue(mockTree)
+
+      render(
+        <AppProvider>
+          <FileTree />
+          <StateInspector />
+        </AppProvider>
+      )
+
+      expect(screen.getByTestId('feature-tab')).toHaveTextContent('agents')
+
+      const file = await screen.findByText('package.json')
+      await user.dblClick(file)
+
+      expect(screen.getByTestId('feature-tab')).toHaveTextContent('editor')
+    })
+
+    it('double-clicking a directory does not switch to editor view', async () => {
+      const user = userEvent.setup()
+      mockFileTreeRequest.mockResolvedValue(mockTree)
+
+      render(
+        <AppProvider>
+          <FileTree />
+          <StateInspector />
+        </AppProvider>
+      )
+
+      const dir = await screen.findByText('src')
+      await user.dblClick(dir)
+
+      expect(screen.getByTestId('feature-tab')).toHaveTextContent('agents')
     })
   })
 })

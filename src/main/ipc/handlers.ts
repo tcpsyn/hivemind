@@ -1,6 +1,27 @@
 import { ipcMain, BrowserWindow, dialog } from 'electron'
 import { RendererToMain, MainToRenderer } from '../../shared/ipc-channels'
+import {
+  tabCreateRequestSchema,
+  tabCloseRequestSchema,
+  agentInputRequestSchema,
+  agentStopRequestSchema,
+  agentRestartRequestSchema,
+  agentResizeRequestSchema,
+  fileReadRequestSchema,
+  fileWriteRequestSchema,
+  fileTreeRequestSchema,
+  gitDiffRequestSchema,
+  teamStartRequestSchema,
+  teamStopRequestSchema,
+  teammateInputRequestSchema,
+  teammateResizeRequestSchema,
+  teammateOutputReadyRequestSchema
+} from '../../shared/validators'
+import type { ZodSchema } from 'zod'
 import type {
+  TabCreateRequest,
+  TabCreateResponse,
+  TabCloseRequest,
   AgentInputRequest,
   AgentStopRequest,
   AgentRestartRequest,
@@ -14,11 +35,9 @@ import type {
   TeamStartRequest,
   TeamStartResponse,
   TeamStopRequest,
-  TabCreateRequest,
-  TabCreateResponse,
-  TabCloseRequest,
   TeammateInputRequest,
   TeammateResizeRequest,
+  TeammateOutputReadyRequest,
   AgentOutputPayload,
   AgentStatusChangePayload,
   AgentInputNeededPayload,
@@ -33,6 +52,16 @@ import type {
 } from '../../shared/ipc-channels'
 import type { FileTreeNode } from '../../shared/types'
 import type { TabContext } from '../services/createIpcServices'
+
+function validated<T>(schema: ZodSchema<T>, handler: (req: T) => Promise<unknown>) {
+  return (_event: Electron.IpcMainInvokeEvent, raw: unknown) => {
+    const result = schema.safeParse(raw)
+    if (!result.success) {
+      throw new Error(`IPC validation failed: ${result.error.message}`)
+    }
+    return handler(result.data)
+  }
+}
 
 export interface IpcServices {
   onTabCreate: (req: TabCreateRequest) => Promise<TabCreateResponse>
@@ -49,51 +78,72 @@ export interface IpcServices {
   onTeamStop: (req: TeamStopRequest) => Promise<void>
   onTeammateInput: (req: TeammateInputRequest) => Promise<void>
   onTeammateResize: (req: TeammateResizeRequest) => Promise<void>
+  onTeammateOutputReady: (req: TeammateOutputReadyRequest) => Promise<void>
   getTab?: (tabId: string) => TabContext | null
   getTabs?: () => Map<string, TabContext>
   destroyAllTabs?: () => Promise<void>
 }
 
 export function registerIpcHandlers(services: IpcServices): void {
-  ipcMain.handle(RendererToMain.TAB_CREATE, (_event, req: TabCreateRequest) =>
-    services.onTabCreate(req)
+  ipcMain.handle(
+    RendererToMain.TAB_CREATE,
+    validated(tabCreateRequestSchema, (req) => services.onTabCreate(req))
   )
-  ipcMain.handle(RendererToMain.TAB_CLOSE, (_event, req: TabCloseRequest) =>
-    services.onTabClose(req)
+  ipcMain.handle(
+    RendererToMain.TAB_CLOSE,
+    validated(tabCloseRequestSchema, (req) => services.onTabClose(req))
   )
-  ipcMain.handle(RendererToMain.AGENT_INPUT, (_event, req: AgentInputRequest) =>
-    services.onAgentInput(req)
+  ipcMain.handle(
+    RendererToMain.AGENT_INPUT,
+    validated(agentInputRequestSchema, (req) => services.onAgentInput(req))
   )
-  ipcMain.handle(RendererToMain.AGENT_STOP, (_event, req: AgentStopRequest) =>
-    services.onAgentStop(req)
+  ipcMain.handle(
+    RendererToMain.AGENT_STOP,
+    validated(agentStopRequestSchema, (req) => services.onAgentStop(req))
   )
-  ipcMain.handle(RendererToMain.AGENT_RESTART, (_event, req: AgentRestartRequest) =>
-    services.onAgentRestart(req)
+  ipcMain.handle(
+    RendererToMain.AGENT_RESTART,
+    validated(agentRestartRequestSchema, (req) => services.onAgentRestart(req))
   )
-  ipcMain.handle(RendererToMain.AGENT_RESIZE, (_event, req: AgentResizeRequest) =>
-    services.onAgentResize(req)
+  ipcMain.handle(
+    RendererToMain.AGENT_RESIZE,
+    validated(agentResizeRequestSchema, (req) => services.onAgentResize(req))
   )
-  ipcMain.handle(RendererToMain.FILE_READ, (_event, req: FileReadRequest) =>
-    services.onFileRead(req)
+  ipcMain.handle(
+    RendererToMain.FILE_READ,
+    validated(fileReadRequestSchema, (req) => services.onFileRead(req))
   )
-  ipcMain.handle(RendererToMain.FILE_WRITE, (_event, req: FileWriteRequest) =>
-    services.onFileWrite(req)
+  ipcMain.handle(
+    RendererToMain.FILE_WRITE,
+    validated(fileWriteRequestSchema, (req) => services.onFileWrite(req))
   )
-  ipcMain.handle(RendererToMain.FILE_TREE_REQUEST, (_event, req: FileTreeRequest) =>
-    services.onFileTreeRequest(req)
+  ipcMain.handle(
+    RendererToMain.FILE_TREE_REQUEST,
+    validated(fileTreeRequestSchema, (req) => services.onFileTreeRequest(req))
   )
-  ipcMain.handle(RendererToMain.GIT_DIFF, (_event, req: GitDiffRequest) => services.onGitDiff(req))
-  ipcMain.handle(RendererToMain.TEAM_START, (_event, req: TeamStartRequest) =>
-    services.onTeamStart(req)
+  ipcMain.handle(
+    RendererToMain.GIT_DIFF,
+    validated(gitDiffRequestSchema, (req) => services.onGitDiff(req))
   )
-  ipcMain.handle(RendererToMain.TEAM_STOP, (_event, req: TeamStopRequest) =>
-    services.onTeamStop(req)
+  ipcMain.handle(
+    RendererToMain.TEAM_START,
+    validated(teamStartRequestSchema, (req) => services.onTeamStart(req))
   )
-  ipcMain.handle(RendererToMain.TEAMMATE_INPUT, (_event, req: TeammateInputRequest) =>
-    services.onTeammateInput(req)
+  ipcMain.handle(
+    RendererToMain.TEAM_STOP,
+    validated(teamStopRequestSchema, (req) => services.onTeamStop(req))
   )
-  ipcMain.handle(RendererToMain.TEAMMATE_RESIZE, (_event, req: TeammateResizeRequest) =>
-    services.onTeammateResize(req)
+  ipcMain.handle(
+    RendererToMain.TEAMMATE_INPUT,
+    validated(teammateInputRequestSchema, (req) => services.onTeammateInput(req))
+  )
+  ipcMain.handle(
+    RendererToMain.TEAMMATE_RESIZE,
+    validated(teammateResizeRequestSchema, (req) => services.onTeammateResize(req))
+  )
+  ipcMain.handle(
+    RendererToMain.TEAMMATE_OUTPUT_READY,
+    validated(teammateOutputReadyRequestSchema, (req) => services.onTeammateOutputReady(req))
   )
 
   ipcMain.handle('dialog:open-folder', async () => {
@@ -165,4 +215,11 @@ export function sendTeammateRenamed(window: BrowserWindow, payload: TeammateRena
 
 export function sendTeammateStatus(window: BrowserWindow, payload: TeammateStatusPayload): void {
   sendToRenderer(window, MainToRenderer.TEAM_TEAMMATE_STATUS, payload)
+}
+
+export function sendTeammateInputNeeded(
+  window: BrowserWindow,
+  payload: { tabId: string; agentId: string; needsInput: boolean; paneId: string }
+): void {
+  sendToRenderer(window, MainToRenderer.TEAMMATE_INPUT_NEEDED, payload)
 }

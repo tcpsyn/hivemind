@@ -5,7 +5,7 @@ import { CompanionPanel } from './CompanionPanel'
 import type { AgentState } from '../../../shared/types'
 import './LeadLayout.css'
 
-const MIN_COMPANION_WIDTH = 280
+const MIN_COMPANION_WIDTH = 500
 
 export function LeadLayout() {
   const activeTab = useActiveTab()
@@ -38,7 +38,7 @@ export function LeadLayout() {
       const container = containerRef.current
       if (!container) return
       const containerWidth = container.clientWidth
-      const startWidth = companionWidth ?? containerWidth * 0.35
+      const startWidth = companionWidth ?? containerWidth * 0.45
 
       const handleMouseMove = (ev: MouseEvent) => {
         if (!isDragging.current || !container) return
@@ -77,7 +77,28 @@ export function LeadLayout() {
       </div>
       {showCompanion && (
         <>
-          <div className="lead-divider" onMouseDown={handleDividerMouseDown} />
+          <div
+            className="lead-divider"
+            onMouseDown={handleDividerMouseDown}
+            onKeyDown={(e) => {
+              const container = containerRef.current
+              if (!container) return
+              const step = e.shiftKey ? 50 : 10
+              const current = companionWidth ?? container.clientWidth * 0.45
+              const maxWidth = container.clientWidth * 0.6
+              if (e.key === 'ArrowRight') {
+                e.preventDefault()
+                setCompanionWidth(Math.max(MIN_COMPANION_WIDTH, current - step))
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault()
+                setCompanionWidth(Math.min(maxWidth, current + step))
+              }
+            }}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize companion panel"
+            tabIndex={0}
+          />
           <div
             className="lead-companion"
             style={companionWidth ? { width: `${companionWidth}px`, flex: 'none' } : undefined}

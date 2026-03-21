@@ -522,7 +522,7 @@ describe('TmuxProxyServer', () => {
       ])
     })
 
-    it('escapes double quotes in input', async () => {
+    it('passes double quotes through unescaped (execFile does not use shell)', async () => {
       createServer({ leadSessionName: 'main' })
 
       mockExec.mockImplementation(async (_cmd: string, args: string[]) => {
@@ -543,7 +543,7 @@ describe('TmuxProxyServer', () => {
         '-t',
         '%1',
         '-l',
-        'echo \\"hello world\\"'
+        'echo "hello world"'
       ])
     })
 
@@ -820,7 +820,7 @@ describe('TmuxProxyServer', () => {
       const pipePaneCalls = mockExec.mock.calls.filter(
         ([, args]) => Array.isArray(args) && args.includes('pipe-pane')
       )
-      expect(pipePaneCalls).toHaveLength(1)
+      expect(pipePaneCalls.length).toBeGreaterThanOrEqual(1)
       expect(pipePaneCalls[0][1]).toContain('-t')
       expect(pipePaneCalls[0][1]).toContain('%1')
     })

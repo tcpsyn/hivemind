@@ -5,8 +5,9 @@ import './AgentListItem.css'
 
 interface AgentListItemProps {
   agent: AgentState
+  agentId: string
   onClick?: () => void
-  onContextMenu?: (action: string) => void
+  onAgentContextMenu?: (agentId: string, action: string) => void
 }
 
 const STATUS_LABELS: Record<AgentStatus, string> = {
@@ -22,7 +23,7 @@ const CONTEXT_ACTIONS = [
   { id: 'history', label: 'View History' }
 ]
 
-function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
+function AgentListItem({ agent, agentId, onClick, onAgentContextMenu }: AgentListItemProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const menuRef = useRef<HTMLDivElement>(null)
@@ -36,9 +37,9 @@ function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
   const handleMenuAction = useCallback(
     (action: string) => {
       setMenuOpen(false)
-      onContextMenu?.(action)
+      onAgentContextMenu?.(agentId, action)
     },
-    [onContextMenu]
+    [agentId, onAgentContextMenu]
   )
 
   useEffect(() => {
@@ -48,8 +49,17 @@ function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
         setMenuOpen(false)
       }
     }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+      }
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [menuOpen])
 
   return (
@@ -59,7 +69,15 @@ function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
         data-testid={`agent-list-item-${agent.id}`}
         style={{ borderLeftColor: agent.color }}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick?.()
+          }
+        }}
         onContextMenu={handleContextMenu}
+        role="button"
+        tabIndex={0}
       >
         <AgentAvatar avatar={agent.avatar} color={agent.color} />
         <div className="agent-list-item-info">
@@ -67,7 +85,12 @@ function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
           <span className="agent-list-item-role">{agent.role}</span>
         </div>
         <div className="agent-list-item-status">
-          <span className={`status-badge ${agent.status}`} data-testid="status-badge" />
+          <span
+            className={`status-dot ${agent.status}`}
+            data-testid="status-badge"
+            role="status"
+            aria-label={`Status: ${agent.status}`}
+          />
           <span className="status-text">{STATUS_LABELS[agent.status]}</span>
         </div>
       </div>
@@ -76,12 +99,15 @@ function AgentListItem({ agent, onClick, onContextMenu }: AgentListItemProps) {
           ref={menuRef}
           className="agent-context-menu"
           style={{ left: menuPos.x, top: menuPos.y }}
+          role="menu"
+          aria-label="Agent actions"
         >
           {CONTEXT_ACTIONS.map((action) => (
             <button
               key={action.id}
               className="agent-context-menu-item"
               onClick={() => handleMenuAction(action.id)}
+              role="menuitem"
             >
               {action.label}
             </button>

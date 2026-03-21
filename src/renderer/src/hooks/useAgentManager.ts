@@ -136,8 +136,6 @@ export function useAgentManager() {
 
   // Listen for teammate events — route by payload.tabId
   useEffect(() => {
-    const paneToAgent = new Map<string, { agentId: string; tabId: string }>()
-
     const unsubSpawned = window.api?.onTeammateSpawned?.((payload) => {
       const { tabId, agent } = payload
       const agentIds = getAgentIds(tabId)
@@ -145,9 +143,6 @@ export function useAgentManager() {
       if (!agentIds.has(agent.id)) {
         agentIds.add(agent.id)
         dispatch({ type: 'ADD_AGENT', payload: agent, tabId })
-      }
-      if (agent.paneId) {
-        paneToAgent.set(agent.paneId, { agentId: agent.id, tabId })
       }
       // Auto-select first teammate
       if (!selectedTeammateIdRef.current) {
@@ -184,11 +179,45 @@ export function useAgentManager() {
       })
     })
 
+    const unsubInputNeeded = window.api?.onTeammateInputNeeded?.((payload) => {
+      dispatch({
+        type: 'UPDATE_AGENT',
+        payload: {
+          id: payload.agentId,
+          needsInput: payload.needsInput
+        },
+        tabId: payload.tabId
+      })
+    })
+
+    const unsubTaskComplete = window.api?.onTeammateTaskComplete?.((payload) => {
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        payload: {
+          id: `task-complete-${payload.agentId}-${Date.now()}`,
+          type: 'info' as const,
+          message: `${payload.name} has completed their task. Click to review.`,
+          agentId: payload.agentId
+        },
+        tabId: payload.tabId
+      })
+      dispatch({
+        type: 'UPDATE_AGENT',
+        payload: {
+          id: payload.agentId,
+          status: 'idle'
+        },
+        tabId: payload.tabId
+      })
+    })
+
     return () => {
       unsubSpawned?.()
       unsubExited?.()
       unsubRenamed?.()
       unsubStatus?.()
+      unsubTaskComplete?.()
+      unsubInputNeeded?.()
     }
   }, [dispatch])
 
@@ -220,6 +249,11 @@ export function useAgentManager() {
     [dispatch, activeTabId]
   )
 
+  const cleanupTabRefs = useCallback((tabId: string) => {
+    tabAgentsRef.current.delete(tabId)
+    teamLeadSetRef.current.delete(tabId)
+  }, [])
+
   const stopTeam = useCallback(async () => {
     const tabId = activeTabId
     await window.api.teamStop({ tabId })
@@ -228,10 +262,21 @@ export function useAgentManager() {
     for (const id of agentIds) {
       dispatch({ type: 'REMOVE_AGENT', payload: id, tabId })
     }
-    agentIds.clear()
-    teamLeadSetRef.current.set(tabId, false)
+    cleanupTabRefs(tabId)
     dispatch({ type: 'SET_TEAM_STATUS', payload: 'stopped', tabId })
-  }, [dispatch, activeTabId])
+  }, [dispatch, activeTabId, cleanupTabRefs])
+
+  // Clean up ref Maps when tabs are closed
+  const prevTabIdsRef = useRef<Set<string>>(new Set(state.tabs.keys()))
+  useEffect(() => {
+    const currentIds = new Set(state.tabs.keys())
+    for (const tabId of prevTabIdsRef.current) {
+      if (!currentIds.has(tabId)) {
+        cleanupTabRefs(tabId)
+      }
+    }
+    prevTabIdsRef.current = currentIds
+  }, [state.tabs, cleanupTabRefs])
 
   // Keep refs in sync for menu handler closures
   startTeamRef.current = startTeam

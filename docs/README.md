@@ -22,6 +22,7 @@ Hivemind solves this by:
 - Detecting when agents need input and surfacing native OS notifications
 - Integrating a file explorer with git status and a Monaco code editor
 - Managing isolated tmux sessions behind the scenes so agents can still coordinate
+- Providing an MCP server for teammate coordination (task assignment, status checks, completion reporting)
 
 ## Tech Stack
 
@@ -29,12 +30,13 @@ Hivemind solves this by:
 |-------|-----------|
 | Runtime | Electron 41 |
 | Frontend | React 19, TypeScript 5.9 |
-| Terminal | xterm.js 5 + fit addon |
+| Terminal | xterm.js 5 + addons (fit, webgl, unicode11, web-links) |
 | Editor | Monaco Editor 0.55 |
 | PTY | node-pty 1.1 |
-| Build | Vite 8 + electron-vite |
+| Build | Vite 8 + electron-vite 5 |
 | File watching | chokidar 5 |
 | Git | simple-git 3.33 |
+| Agent coordination | MCP SDK 1.27 (Model Context Protocol) |
 | Validation | Zod 4 |
 | Config parsing | yaml 2.8 |
 | Testing | Vitest (unit/integration), Playwright (E2E) |

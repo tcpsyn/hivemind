@@ -59,6 +59,14 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
     [dispatch, onFileClick, activeTabId]
   )
 
+  const handleFileDoubleClick = useCallback(
+    (node: FileTreeNode) => {
+      handleFileClick(node)
+      dispatch({ type: 'SET_ACTIVE_FEATURE_TAB', payload: 'editor' })
+    },
+    [dispatch, handleFileClick]
+  )
+
   const handleContextMenu = useCallback((e: React.MouseEvent, node: FileTreeNode) => {
     e.preventDefault()
     setContextMenu({ x: e.clientX, y: e.clientY, node })
@@ -168,6 +176,7 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
             isFocused={idx === focusIndex}
             onToggle={toggleDir}
             onClick={handleFileClick}
+            onDoubleClick={handleFileDoubleClick}
             onContextMenu={handleContextMenu}
           />
         )
@@ -178,8 +187,10 @@ export default function FileTree({ onFileClick }: FileTreeProps) {
           className="file-tree-context-menu"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           data-testid="context-menu"
+          role="menu"
+          aria-label="File actions"
         >
-          <button className="context-menu-item" onClick={handleCopyPath}>
+          <button className="context-menu-item" onClick={handleCopyPath} role="menuitem">
             Copy Path
           </button>
         </div>

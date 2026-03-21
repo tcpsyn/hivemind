@@ -78,49 +78,6 @@
   white-space: nowrap;
 }
 
-.teammate-status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-}
-
-.teammate-status-dot.running {
-  background: var(--status-running);
-}
-
-.teammate-status-dot.active {
-  background: var(--status-stopped);
-  animation: dot-pulse 1s ease-in-out infinite;
-  box-shadow: 0 0 4px var(--status-stopped);
-}
-
-@keyframes dot-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    box-shadow: 0 0 4px var(--status-stopped);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scale(1.4);
-    box-shadow: 0 0 8px var(--status-stopped);
-  }
-}
-
-.teammate-status-dot.idle {
-  background: var(--status-idle);
-}
-
-.teammate-status-dot.waiting {
-  background: var(--status-waiting);
-}
-
-.teammate-status-dot.stopped {
-  background: var(--status-stopped);
-}
-
 .teammate-card-footer {
   display: flex;
   align-items: center;
@@ -154,6 +111,7 @@
 }
 
 .btn-approve,
+.btn-approve-all,
 .btn-deny {
   flex: 1;
   padding: var(--space-1) var(--space-2);
@@ -175,6 +133,16 @@
 
 .btn-approve:hover {
   background: rgba(74, 222, 128, 0.25);
+}
+
+.btn-approve-all {
+  background: rgba(69, 183, 209, 0.15);
+  color: var(--text-accent, #45b7d1);
+  border-color: rgba(69, 183, 209, 0.3);
+}
+
+.btn-approve-all:hover {
+  background: rgba(69, 183, 209, 0.25);
 }
 
 .btn-deny {

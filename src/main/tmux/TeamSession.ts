@@ -1,11 +1,12 @@
 import { join, resolve } from 'path'
 import { tmpdir } from 'os'
-import { existsSync, readdirSync, unlinkSync } from 'fs'
+import { existsSync, readdirSync, unlinkSync, promises as fsPromises } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { EventEmitter } from 'events'
 import { PtyManager } from '../pty/PtyManager'
 import { TmuxProxyServer, type ProxyPaneInfo } from './TmuxProxyServer'
+import { ClaudeConfigService } from '../services/ClaudeConfigService'
 import type { AgentState } from '../../shared/types'
 
 const execFileAsync = promisify(execFile)
@@ -25,6 +26,12 @@ export class TeamSession extends EventEmitter {
   private running = false
   private signalHandlers: { event: string; handler: () => void }[] = []
   private realTmuxPath: string
+  private configService: ClaudeConfigService | null = null
+  private leadPaneId: string = '%0'
+
+  getLeadPaneId(): string {
+    return this.leadPaneId
+  }
 
   constructor(sessionName: string, projectPath: string, ptyManager?: PtyManager) {
     super()
@@ -62,6 +69,14 @@ export class TeamSession extends EventEmitter {
   }
 
   async start(leadCommand?: string): Promise<AgentState> {
+    // Clear stale completion notifications from previous sessions
+    const safeName = this.sessionName.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const updatesFile = join(tmpdir(), `hivemind-${safeName}-updates.jsonl`)
+    try {
+      await fsPromises.writeFile(updatesFile, '')
+    } catch {
+      // non-fatal
+    }
     // Create a dedicated tmux server and session so Claude Code
     // detects tmux and spawns agents as tmux panes (not subprocesses)
     await execFileAsync(this.realTmuxPath, [
@@ -72,9 +87,9 @@ export class TeamSession extends EventEmitter {
       '-s',
       this.sessionName,
       '-x',
-      '80',
+      '200',
       '-y',
-      '24'
+      '50'
     ])
 
     // Disable tmux status bar — we show agent info in the app UI instead
@@ -108,17 +123,29 @@ export class TeamSession extends EventEmitter {
       '-F',
       '#{pane_id}'
     ])
-    const leadPaneId = leadPaneOut.trim().split('\n')[0] || '%0'
+    this.leadPaneId = leadPaneOut.trim().split('\n')[0] || '%0'
 
     this.proxyServer = new TmuxProxyServer(this.socketPath, this.realTmuxPath, {
       pollIntervalMs: 2000,
       tmuxSocketName: this.tmuxSocketName,
       leadSessionName: this.sessionName,
-      leadPaneId
+      leadPaneId: this.leadPaneId
     })
     await this.proxyServer.start()
 
     this.wireServerEvents()
+
+    // Write Claude Code hooks + MCP config so the lead agent's
+    // Agent tool calls get intercepted and spawned as tmux panes
+    this.configService = new ClaudeConfigService({
+      projectDir: this.projectPath,
+      binDir: TeamSession.getBinDir(),
+      tmuxSocket: this.tmuxSocketName,
+      realTmuxPath: this.realTmuxPath,
+      sessionName: this.sessionName,
+      leadPaneId: this.leadPaneId
+    })
+    await this.configService.writeConfigs()
 
     const leadEnv = this.getLeadEnv(tmuxEnvValue.trim())
     const leadAgent = await this.ptyManager.createPty(
@@ -153,6 +180,16 @@ export class TeamSession extends EventEmitter {
     if (this.leadAgent) {
       this.ptyManager.destroyPty(this.leadAgent.id)
       this.leadAgent = null
+    }
+
+    // Clean up Claude Code hook + MCP config files
+    if (this.configService) {
+      try {
+        await this.configService.cleanup()
+      } catch {
+        // Cleanup failure must not prevent tmux server shutdown
+      }
+      this.configService = null
     }
 
     // Close proxy server (cleans up socket file)
@@ -210,6 +247,7 @@ export class TeamSession extends EventEmitter {
       PATH: `${binDir}:${currentPath}`,
       CC_FRONTEND_SOCKET: this.socketPath,
       CC_TMUX_SOCKET: this.tmuxSocketName,
+      CC_TMUX_SESSION: this.sessionName,
       REAL_TMUX: this.realTmuxPath,
       CLAUDECODE: '1',
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1'
@@ -218,16 +256,20 @@ export class TeamSession extends EventEmitter {
     // and spawns agents as tmux panes instead of subprocesses
     if (tmuxEnvValue) {
       env.TMUX = tmuxEnvValue
-      env.TMUX_PANE = '%0'
+      env.TMUX_PANE = this.leadPaneId
     }
     return env
   }
 
-  async sendTeammateInput(paneId: string, data: string): Promise<void> {
+  async sendTeammateInput(paneId: string, data: string, useKeys?: boolean): Promise<void> {
     if (!this.proxyServer) {
       throw new Error('TeamSession not running')
     }
-    await this.proxyServer.sendInput(paneId, data)
+    if (useKeys) {
+      await this.proxyServer.sendKeys(paneId, data)
+    } else {
+      await this.proxyServer.sendInput(paneId, data)
+    }
   }
 
   private wireServerEvents(): void {
@@ -274,6 +316,28 @@ export class TeamSession extends EventEmitter {
         }
       }
     )
+
+    this.proxyServer.on(
+      'teammate-input-needed',
+      ({ paneId, needsInput }: { paneId: string; needsInput: boolean }) => {
+        const agentId = this.paneIdToAgentId.get(paneId)
+        if (agentId) {
+          this.emit('teammate-input-needed', agentId, needsInput, paneId)
+        }
+      }
+    )
+
+    // Track which panes have reported completion to avoid duplicate events
+    const completedPanes = new Set<string>()
+    this.proxyServer.on('teammate-task-complete', ({ paneId }: { paneId: string }) => {
+      if (completedPanes.has(paneId)) return
+      completedPanes.add(paneId)
+      const agentId = this.paneIdToAgentId.get(paneId)
+      if (agentId) {
+        const agent = this.teammates.get(agentId)
+        this.emit('teammate-task-complete', agentId, agent?.name || 'teammate', paneId)
+      }
+    })
 
     this.proxyServer.on(
       'teammate-renamed',

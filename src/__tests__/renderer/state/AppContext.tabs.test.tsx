@@ -337,7 +337,7 @@ describe('AppContext — Multi-Project Tabs', () => {
       expect(state.tabs.get('tab-2')!.notifications).toHaveLength(0)
     })
 
-    it('DISMISS_NOTIFICATION scopes to the correct tab', () => {
+    it('DISMISS_NOTIFICATION removes from the correct tab', () => {
       let state = appReducer(initialAppState, {
         type: 'CREATE_TAB',
         payload: { id: 'tab-1', projectPath: '/a', projectName: 'a' }
@@ -345,7 +345,7 @@ describe('AppContext — Multi-Project Tabs', () => {
       const notif = makeNotification({ id: 'n1' })
       state = appReducer(state, { type: 'ADD_NOTIFICATION', payload: notif, tabId: 'tab-1' })
       state = appReducer(state, { type: 'DISMISS_NOTIFICATION', payload: 'n1', tabId: 'tab-1' })
-      expect(state.tabs.get('tab-1')!.notifications[0].read).toBe(true)
+      expect(state.tabs.get('tab-1')!.notifications).toHaveLength(0)
     })
   })
 

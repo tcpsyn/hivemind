@@ -18,7 +18,8 @@
 .main-content {
   grid-area: main;
   background: var(--bg-primary);
-  overflow: auto;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .main-empty-state {

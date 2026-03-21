@@ -32,7 +32,8 @@ if [ -n "$CC_FRONTEND_SOCKET" ] && [ -S "$CC_FRONTEND_SOCKET" ]; then
     new-session|new-window|split-window|send-keys|kill-pane|kill-session|kill-window)
       # Build JSON and send in background (doesn't block tmux return)
       (
-        ARGS_JSON=$(python3 -c 'import sys,json; print(json.dumps(sys.argv[1:]))' "$@" 2>/dev/null)
+        # Build JSON array from args using jq (no python3 dependency)
+        ARGS_JSON=$(printf '%s\n' "$@" | jq -R -s 'split("\n") | .[:-1]' 2>/dev/null)
         if [ -n "$ARGS_JSON" ]; then
           printf '{"event":"tmux-command","command":"%s","args":%s,"exitCode":%d}\n' \
             "$CMD" "$ARGS_JSON" "$EXIT_CODE" | nc -U -w1 "$CC_FRONTEND_SOCKET" 2>/dev/null

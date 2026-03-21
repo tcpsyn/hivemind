@@ -320,18 +320,22 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     // === Per-tab: notifications ===
 
-    case 'ADD_NOTIFICATION':
-      return updateTab(state, action.tabId, (tab) => ({
-        ...tab,
-        notifications: [...tab.notifications, action.payload]
-      }))
+    case 'ADD_NOTIFICATION': {
+      const MAX_NOTIFICATIONS = 100
+      return updateTab(state, action.tabId, (tab) => {
+        const updated = [...tab.notifications, action.payload]
+        return {
+          ...tab,
+          notifications:
+            updated.length > MAX_NOTIFICATIONS ? updated.slice(-MAX_NOTIFICATIONS) : updated
+        }
+      })
+    }
 
     case 'DISMISS_NOTIFICATION':
       return updateTab(state, action.tabId, (tab) => ({
         ...tab,
-        notifications: tab.notifications.map((n) =>
-          n.id === action.payload ? { ...n, read: true } : n
-        )
+        notifications: tab.notifications.filter((n) => n.id !== action.payload)
       }))
 
     // === Per-tab: team status ===

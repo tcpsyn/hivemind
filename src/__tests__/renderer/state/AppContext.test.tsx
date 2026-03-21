@@ -499,7 +499,7 @@ describe('AppContext', () => {
       expect(state.tabs.get(DEFAULT_TAB_ID)!.notifications).toHaveLength(1)
     })
 
-    it('DISMISS_NOTIFICATION marks as read in specified tab', () => {
+    it('DISMISS_NOTIFICATION removes the notification from specified tab', () => {
       const notif = makeNotification()
       let state = appReducer(initialAppState, {
         type: 'ADD_NOTIFICATION',
@@ -511,7 +511,7 @@ describe('AppContext', () => {
         payload: 'notif-1',
         tabId: DEFAULT_TAB_ID
       })
-      expect(state.tabs.get(DEFAULT_TAB_ID)!.notifications[0].read).toBe(true)
+      expect(state.tabs.get(DEFAULT_TAB_ID)!.notifications).toHaveLength(0)
     })
   })
 

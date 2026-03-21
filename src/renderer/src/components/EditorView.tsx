@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useActiveTab } from '../state/AppContext'
+import { useActiveTab, useAppState } from '../state/AppContext'
 import { useEditor } from '../hooks/useEditor'
 import EditorTabBar from './EditorTabBar'
 import MonacoEditor from './MonacoEditor'
@@ -8,11 +8,12 @@ import './EditorView.css'
 
 export default function EditorView() {
   const tab = useActiveTab()
+  const { activeTabId } = useAppState()
   const { openFiles, activeFileId } = tab.editor
   const activeTab = openFiles.find((f) => f.id === activeFileId) ?? null
   const [showDiff, setShowDiff] = useState(false)
 
-  const editor = useEditor(activeTab?.filePath ?? null)
+  const editor = useEditor(activeTab?.filePath ?? null, activeTabId)
 
   return (
     <div className="editor-view" data-testid="editor-view">
@@ -44,6 +45,7 @@ export default function EditorView() {
               ) : (
                 <MonacoEditor
                   filePath={activeTab.filePath}
+                  content={editor.content}
                   language={activeTab.language}
                   isReadOnly={editor.isReadOnly}
                   onContentChange={editor.setContent}

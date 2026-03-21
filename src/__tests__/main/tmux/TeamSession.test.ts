@@ -273,4 +273,203 @@ describe('TeamSession', () => {
       expect(path).toContain('tmux')
     })
   })
+
+  describe('teammate-renamed event', () => {
+    it('emits teammate-renamed when proxy reports rename', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'worker',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      const renamedSpy = vi.fn()
+      session.on('teammate-renamed', renamedSpy)
+
+      server!.emit('teammate-renamed', { paneId: '%1', name: 'researcher' })
+
+      expect(renamedSpy).toHaveBeenCalledTimes(1)
+      const [agentId, name, paneId] = renamedSpy.mock.calls[0]
+      expect(agentId).toBe('tmux-%1')
+      expect(name).toBe('researcher')
+      expect(paneId).toBe('%1')
+    })
+
+    it('updates agent name in teammates map', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'worker',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      server!.emit('teammate-renamed', { paneId: '%1', name: 'researcher' })
+
+      const teammates = session.getTeammates()
+      expect(teammates[0].name).toBe('researcher')
+    })
+
+    it('ignores rename for unknown pane', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const renamedSpy = vi.fn()
+      session.on('teammate-renamed', renamedSpy)
+
+      server!.emit('teammate-renamed', { paneId: '%99', name: 'ghost' })
+
+      expect(renamedSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('teammate-status-update event', () => {
+    it('emits teammate-status-update for known panes', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'worker',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      const statusSpy = vi.fn()
+      session.on('teammate-status-update', statusSpy)
+
+      server!.emit('teammate-status-update', {
+        paneId: '%1',
+        model: 'Opus 4.6',
+        contextPercent: '25%',
+        branch: 'main'
+      })
+
+      expect(statusSpy).toHaveBeenCalledTimes(1)
+      const [agentId, info] = statusSpy.mock.calls[0]
+      expect(agentId).toBe('tmux-%1')
+      expect(info.model).toBe('Opus 4.6')
+    })
+
+    it('ignores status update for unknown pane', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const statusSpy = vi.fn()
+      session.on('teammate-status-update', statusSpy)
+
+      server!.emit('teammate-status-update', {
+        paneId: '%99',
+        model: 'Opus 4.6'
+      })
+
+      expect(statusSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('error propagation', () => {
+    it('propagates proxy server errors', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const errorSpy = vi.fn()
+      session.on('error', errorSpy)
+
+      server!.emit('error', new Error('proxy failure'))
+
+      expect(errorSpy).toHaveBeenCalledTimes(1)
+      expect(errorSpy.mock.calls[0][0].message).toBe('proxy failure')
+    })
+
+    it('propagates server-error events', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const serverErrorSpy = vi.fn()
+      session.on('server-error', serverErrorSpy)
+
+      server!.emit('server-error', { failures: 3, message: 'unreachable' })
+
+      expect(serverErrorSpy).toHaveBeenCalledWith({ failures: 3, message: 'unreachable' })
+    })
+
+    it('propagates server-recovered events', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const recoveredSpy = vi.fn()
+      session.on('server-recovered', recoveredSpy)
+
+      server!.emit('server-recovered')
+
+      expect(recoveredSpy).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('teammate-exited cleanup', () => {
+    it('removes teammate from internal maps on exit', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'worker',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      expect(session.getTeammates()).toHaveLength(1)
+
+      server!.emit('teammate-exited', { paneId: '%1' })
+
+      expect(session.getTeammates()).toHaveLength(0)
+    })
+
+    it('handles exit for already-removed pane gracefully', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      const exitedSpy = vi.fn()
+      session.on('teammate-exited', exitedSpy)
+
+      server!.emit('teammate-exited', { paneId: '%99' })
+
+      expect(exitedSpy).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('stop cleanup', () => {
+    it('clears teammates on stop', async () => {
+      await session.start()
+      const server = session.getServer()
+
+      server!.emit('teammate-detected', {
+        paneId: '%1',
+        pid: 11111,
+        windowName: 'worker',
+        tty: '',
+        sessionName: 'test-team'
+      })
+
+      await session.stop()
+      expect(session.getTeammates()).toHaveLength(0)
+      expect(session.getLeadAgent()).toBeNull()
+      expect(session.isRunning()).toBe(false)
+    })
+  })
+
+  describe('cleanupStaleSockets', () => {
+    it('does not throw', () => {
+      expect(() => TeamSession.cleanupStaleSockets()).not.toThrow()
+    })
+  })
 })

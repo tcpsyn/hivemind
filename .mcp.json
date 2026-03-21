@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "node",
+      "args": [
+        "/Users/lukemacneil/code/cc_frontend/bin/hivemind-mcp-server.mjs"
+      ],
+      "env": {
+        "CC_TMUX_SOCKET": "hivemind-cc_frontend-1774073890623",
+        "CC_TMUX_SESSION": "cc_frontend",
+        "REAL_TMUX": "/opt/homebrew/bin/tmux",
+        "TMUX_PANE": "%0"
+      }
+    }
+  }
+}

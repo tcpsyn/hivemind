@@ -17,7 +17,8 @@ import {
   sendTeammateExited,
   sendTeammateOutput,
   sendTeammateRenamed,
-  sendTeammateStatus
+  sendTeammateStatus,
+  sendTeammateInputNeeded
 } from './ipc/handlers'
 import { FileExplorerService } from './services/FileExplorerService'
 import { TeamSession } from './tmux/TeamSession'
@@ -47,7 +48,7 @@ function createWindow(): void {
     ),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false
     }
@@ -323,6 +324,33 @@ function wireTeamSessionEvents(tabId: string, session: TeamSession): void {
       }
     }
   )
+
+  session.on('teammate-input-needed', (agentId: string, needsInput: boolean, paneId: string) => {
+    if (mainWindow) {
+      sendTeammateInputNeeded(mainWindow, { tabId, agentId, needsInput, paneId })
+    }
+  })
+
+  session.on('teammate-task-complete', (agentId: string, name: string, _paneId: string) => {
+    console.error(`[Hivemind] Teammate "${name}" (${agentId}) reported task complete`)
+    if (mainWindow) {
+      mainWindow.webContents.send('teammate:task-complete', { tabId, agentId, name })
+    }
+    // Auto-notify the lead by typing into its terminal prompt.
+    const server = session.getServer()
+    const leadPaneId = session.getLeadPaneId()
+    console.error(`[Hivemind] Notifying lead pane ${leadPaneId}, server=${!!server}`)
+    if (server && leadPaneId) {
+      server
+        .sendLiteralText(
+          leadPaneId,
+          `Teammate "${name}" has finished. Call hivemind_list_teammates to see their report.`
+        )
+        .then(() => server.sendKeys(leadPaneId, 'Enter'))
+        .then(() => console.error(`[Hivemind] Lead notification sent successfully`))
+        .catch((err) => console.error(`[Hivemind] Lead notification failed:`, err))
+    }
+  })
 }
 
 function disposeServices(): void {

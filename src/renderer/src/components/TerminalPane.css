@@ -1,6 +1,7 @@
 .terminal-pane {
   display: flex;
   flex-direction: column;
+  position: relative;
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -80,6 +81,12 @@
   background: var(--status-stopped);
 }
 
+.status-dot.active {
+  background: var(--status-active);
+  animation: pulse-active 1s ease-in-out infinite;
+  box-shadow: 0 0 4px var(--status-active);
+}
+
 @keyframes pulse-green {
   0%,
   100% {
@@ -100,8 +107,88 @@
   }
 }
 
+@keyframes pulse-active {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 4px var(--status-active);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.4);
+    box-shadow: 0 0 8px var(--status-active);
+  }
+}
+
 .terminal-container {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  /* contain: strict was removed — it broke fitAddon.fit() dimension measurement
+     on terminal reattach by deferring layout computation. The 150ms debounce in
+     ResizeObserver handles drag-resize performance adequately. */
+}
+
+.terminal-prompt-overlay {
+  position: absolute;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+  z-index: 10;
+  animation: overlay-fade-in 0.15s ease-out;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.terminal-prompt-overlay .btn-approve,
+.terminal-prompt-overlay .btn-approve-all,
+.terminal-prompt-overlay .btn-deny {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.terminal-prompt-overlay .btn-approve {
+  background: rgba(74, 222, 128, 0.25);
+  color: var(--status-running);
+  border-color: rgba(74, 222, 128, 0.5);
+}
+
+.terminal-prompt-overlay .btn-approve:hover {
+  background: rgba(74, 222, 128, 0.4);
+}
+
+.terminal-prompt-overlay .btn-approve-all {
+  background: rgba(69, 183, 209, 0.25);
+  color: var(--text-accent, #45b7d1);
+  border-color: rgba(69, 183, 209, 0.5);
+}
+
+.terminal-prompt-overlay .btn-approve-all:hover {
+  background: rgba(69, 183, 209, 0.4);
+}
+
+.terminal-prompt-overlay .btn-deny {
+  background: rgba(248, 113, 113, 0.25);
+  color: var(--status-stopped);
+  border-color: rgba(248, 113, 113, 0.5);
+}
+
+.terminal-prompt-overlay .btn-deny:hover {
+  background: rgba(248, 113, 113, 0.4);
 }

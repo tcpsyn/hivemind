@@ -2,24 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import MonacoEditor from '../../../renderer/src/components/MonacoEditor'
 
-const { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme } = vi.hoisted(() => {
-  const mockDispose = vi.fn()
-  const mockUpdateOptions = vi.fn()
+const { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme, mockSetValue } = vi.hoisted(
+  () => {
+    const mockDispose = vi.fn()
+    const mockUpdateOptions = vi.fn()
+    const mockSetValue = vi.fn()
 
-  const mockCreate = vi.fn(() => ({
-    dispose: mockDispose,
-    setValue: vi.fn(),
-    getValue: vi.fn(() => 'file content'),
-    updateOptions: mockUpdateOptions,
-    onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
-    getModel: vi.fn(() => ({ dispose: vi.fn() })),
-    layout: vi.fn()
-  }))
+    const mockCreate = vi.fn(() => ({
+      dispose: mockDispose,
+      setValue: mockSetValue,
+      getValue: vi.fn(() => 'file content'),
+      updateOptions: mockUpdateOptions,
+      onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
+      getModel: vi.fn(() => ({ dispose: vi.fn() })),
+      layout: vi.fn()
+    }))
 
-  const mockSetTheme = vi.fn()
+    const mockSetTheme = vi.fn()
 
-  return { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme }
-})
+    return { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme, mockSetValue }
+  }
+)
 
 vi.mock('monaco-editor', () => ({
   editor: {
@@ -32,29 +35,16 @@ vi.mock('monaco-editor', () => ({
   }
 }))
 
-const mockFileRead = vi.fn()
-const mockFileWrite = vi.fn()
-
-Object.defineProperty(window, 'api', {
-  value: {
-    fileRead: mockFileRead,
-    fileWrite: mockFileWrite
-  },
-  writable: true,
-  configurable: true
-})
-
 describe('MonacoEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFileRead.mockResolvedValue({ content: 'const x = 1;', filePath: '/src/index.ts' })
-    mockFileWrite.mockResolvedValue(undefined)
   })
 
   it('renders the editor container', () => {
     render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}
@@ -68,6 +58,7 @@ describe('MonacoEditor', () => {
     render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}
@@ -83,6 +74,7 @@ describe('MonacoEditor', () => {
     render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}
@@ -94,10 +86,30 @@ describe('MonacoEditor', () => {
     })
   })
 
+  it('creates editor with initial content from props', async () => {
+    render(
+      <MonacoEditor
+        filePath="/src/index.ts"
+        content="const x = 1;"
+        language="typescript"
+        isReadOnly={true}
+        onContentChange={vi.fn()}
+      />
+    )
+
+    await waitFor(() => {
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ value: 'const x = 1;' })
+      )
+    })
+  })
+
   it('respects read-only mode', async () => {
     render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}
@@ -116,6 +128,7 @@ describe('MonacoEditor', () => {
     render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={false}
         onContentChange={vi.fn()}
@@ -130,25 +143,11 @@ describe('MonacoEditor', () => {
     })
   })
 
-  it('loads file content on mount', async () => {
-    render(
-      <MonacoEditor
-        filePath="/src/index.ts"
-        language="typescript"
-        isReadOnly={true}
-        onContentChange={vi.fn()}
-      />
-    )
-
-    await waitFor(() => {
-      expect(mockFileRead).toHaveBeenCalledWith({ filePath: '/src/index.ts' })
-    })
-  })
-
   it('updates read-only when prop changes', async () => {
     const { rerender } = render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}
@@ -162,6 +161,7 @@ describe('MonacoEditor', () => {
     rerender(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={false}
         onContentChange={vi.fn()}
@@ -175,6 +175,7 @@ describe('MonacoEditor', () => {
     const { unmount } = render(
       <MonacoEditor
         filePath="/src/index.ts"
+        content="const x = 1;"
         language="typescript"
         isReadOnly={true}
         onContentChange={vi.fn()}

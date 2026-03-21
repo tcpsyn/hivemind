@@ -3,6 +3,7 @@
 A desktop GUI for Claude Code agent teams. Electron + React + TypeScript.
 
 ## Tech Stack
+
 - **Runtime**: Electron
 - **Frontend**: React + TypeScript
 - **Terminal**: xterm.js
@@ -12,22 +13,27 @@ A desktop GUI for Claude Code agent teams. Electron + React + TypeScript.
 - **Package Manager**: pnpm
 
 ## Project Structure
+
 ```
 src/
   main/           # Electron main process
     ipc/          # IPC handlers
     pty/          # PTY management
     services/     # Main process services
+    tmux/         # Tmux integration for agent teams
+    mcp/          # MCP server for agent coordination
   renderer/       # React renderer
     components/   # React components
     hooks/        # Custom React hooks
     state/        # State management
     styles/       # Global styles
+    terminal/     # Terminal registry singleton
   shared/         # Shared types and utilities
   __tests__/      # Test files mirroring src structure
 ```
 
 ## Development Commands
+
 ```bash
 pnpm dev          # Start in development mode
 pnpm build        # Build for production
@@ -39,6 +45,7 @@ pnpm format       # Run Prettier
 ```
 
 ## Architecture Decisions
+
 - Main process manages PTY sessions and spawns Claude CLI processes
 - Renderer communicates with main via typed IPC channels
 - Each agent gets a dedicated PTY with output piped to xterm.js
@@ -46,6 +53,7 @@ pnpm format       # Run Prettier
 - File watching via chokidar in main process, updates pushed to renderer via IPC
 
 ## Git Workflow
+
 - `main` branch is always deployable
 - Feature branches: `feature/<description>`
 - Bug fixes: `fix/<description>`
@@ -53,6 +61,7 @@ pnpm format       # Run Prettier
 - Commits follow conventional style: `feat:`, `fix:`, `test:`, `docs:`, `chore:`
 
 ## Testing Standards
+
 - TDD: tests written before implementation
 - Unit tests for all business logic
 - Integration tests for IPC communication

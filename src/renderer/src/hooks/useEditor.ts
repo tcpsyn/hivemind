@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 const SAVE_DEBOUNCE_MS = 500
 
-export function useEditor(filePath: string | null) {
+export function useEditor(filePath: string | null, tabId?: string) {
   const [content, setContentState] = useState('')
   const [isModified, setIsModified] = useState(false)
   const [isReadOnly, setIsReadOnly] = useState(true)
@@ -12,12 +12,18 @@ export function useEditor(filePath: string | null) {
 
   useEffect(() => {
     currentPath.current = filePath
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+      debounceTimer.current = null
+    }
+
     if (!filePath) return
 
     setIsModified(false)
     setIsReadOnly(true)
 
-    window.api.fileRead({ filePath }).then((res) => {
+    window.api.fileRead({ filePath, tabId: tabId || '' }).then((res) => {
       if (currentPath.current === filePath) {
         originalContent.current = res.content
         setContentState(res.content)
@@ -36,11 +42,11 @@ export function useEditor(filePath: string | null) {
   const doSave = useCallback(
     async (contentToSave: string) => {
       if (!filePath) return
-      await window.api.fileWrite({ filePath, content: contentToSave })
+      await window.api.fileWrite({ filePath, content: contentToSave, tabId: tabId || '' })
       originalContent.current = contentToSave
       setIsModified(false)
     },
-    [filePath]
+    [filePath, tabId]
   )
 
   const setContent = useCallback(

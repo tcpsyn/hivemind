@@ -2,7 +2,6 @@ import { EventEmitter } from 'events'
 import * as pty from 'node-pty'
 import type { AgentConfig, AgentState } from '../../shared/types'
 import { INPUT_PROMPT_PATTERNS, INPUT_DETECTION_TIMEOUT_MS } from '../../shared/constants'
-import { PtyOutputBuffer } from '../tmux/PtyOutputBuffer'
 
 interface PtyEntry {
   pty: pty.IPty
@@ -14,7 +13,6 @@ interface PtyEntry {
 export class PtyManager extends EventEmitter {
   private entries = new Map<string, PtyEntry>()
   private idCounter = 0
-  private outputBuffers = new Map<string, PtyOutputBuffer>()
   private inputTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
   async createPty(
@@ -58,12 +56,8 @@ export class PtyManager extends EventEmitter {
     const entry: PtyEntry = { pty: term, agent, config, cwd }
     this.entries.set(id, entry)
 
-    const buffer = new PtyOutputBuffer()
-    this.outputBuffers.set(id, buffer)
-
     term.onData((data: string) => {
       agent.lastActivity = Date.now()
-      buffer.append(data)
       this.emit('data', id, data)
       this.checkForInputNeeded(id, data)
     })
@@ -101,14 +95,15 @@ export class PtyManager extends EventEmitter {
     if (!entry) {
       throw new Error(`No PTY found for agent ${agentId}`)
     }
-    entry.pty.resize(cols, rows)
+    const safeCols = Math.max(1, Math.floor(cols))
+    const safeRows = Math.max(1, Math.floor(rows))
+    entry.pty.resize(safeCols, safeRows)
   }
 
   destroyPty(agentId: string): void {
     const entry = this.entries.get(agentId)
     if (!entry) return
 
-    this.outputBuffers.delete(agentId)
     const inputTimeout = this.inputTimeouts.get(agentId)
     if (inputTimeout) {
       clearTimeout(inputTimeout)

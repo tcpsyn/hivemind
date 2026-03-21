@@ -6,6 +6,7 @@ import { join } from 'path'
 import { EventEmitter } from 'events'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { StringDecoder } from 'string_decoder'
 
 const execFileAsync = promisify(execFile)
 
@@ -40,11 +41,19 @@ const PANE_MUTATING_COMMANDS = [
   'kill-window'
 ]
 
+// Max output file size before truncation (10 MB)
+const MAX_OUTPUT_FILE_BYTES = 10 * 1024 * 1024
+// Max bytes to read in a single poll cycle (256 KB)
+const MAX_READ_CHUNK_BYTES = 256 * 1024
+
 interface PaneStreamState {
   interval: ReturnType<typeof setInterval>
   outFile: string
   bytesRead: number
   reading?: boolean
+  fileHandle?: fsPromises.FileHandle
+  decoder?: StringDecoder
+  watcher?: fs.FSWatcher
 }
 
 export class TmuxProxyServer extends EventEmitter {
@@ -65,7 +74,11 @@ export class TmuxProxyServer extends EventEmitter {
   private static readonly MAX_DISCOVER_FAILURES = 3
   private serverHealthy = true
   private discovering = false
-  private pendingSendKeys: Array<{ args: string[] }> = []
+  private pendingSendKeys: Array<{ args: string[]; timestamp: number }> = []
+  private static readonly MAX_PENDING_SEND_KEYS = 100
+  private static readonly PENDING_SEND_KEYS_TTL_MS = 30_000
+  private outputBuffers = new Map<string, Buffer[]>()
+  private readyPanes = new Set<string>()
 
   constructor(
     socketPath: string,
@@ -120,6 +133,12 @@ export class TmuxProxyServer extends EventEmitter {
 
     for (const [, state] of this.paneStreams) {
       clearInterval(state.interval)
+      if (state.watcher) {
+        state.watcher.close()
+      }
+      if (state.fileHandle) {
+        state.fileHandle.close().catch(() => {})
+      }
       try {
         fs.unlinkSync(state.outFile)
       } catch {
@@ -140,6 +159,8 @@ export class TmuxProxyServer extends EventEmitter {
 
     this.knownPanes.clear()
     this.pendingSendKeys = []
+    this.outputBuffers.clear()
+    this.readyPanes.clear()
     this.consecutiveDiscoverFailures = 0
     this.serverHealthy = true
     this.discovering = false
@@ -200,8 +221,8 @@ export class TmuxProxyServer extends EventEmitter {
     }
 
     if (PANE_MUTATING_COMMANDS.includes(notification.command)) {
-      this.discoverPanes().catch((err) => {
-        this.emit('error', err)
+      this.discoverPanes().catch(() => {
+        // Ignore — tmux server may not be ready yet
       })
     }
   }
@@ -231,14 +252,26 @@ export class TmuxProxyServer extends EventEmitter {
 
     // Buffer unmatched notifications — pane may not be discovered yet
     if (!matched) {
-      this.pendingSendKeys.push({ args: [...args] })
+      const now = Date.now()
+      // Evict stale entries
+      this.pendingSendKeys = this.pendingSendKeys.filter(
+        (p) => now - p.timestamp < TmuxProxyServer.PENDING_SEND_KEYS_TTL_MS
+      )
+      // Enforce max size
+      if (this.pendingSendKeys.length >= TmuxProxyServer.MAX_PENDING_SEND_KEYS) {
+        this.pendingSendKeys.shift()
+      }
+      this.pendingSendKeys.push({ args: [...args], timestamp: now })
     }
   }
 
   private replayPendingSendKeys(paneId: string, paneInfo: ProxyPaneInfo): void {
-    const remaining: Array<{ args: string[] }> = []
+    const now = Date.now()
+    const remaining: Array<{ args: string[]; timestamp: number }> = []
 
     for (const pending of this.pendingSendKeys) {
+      // Skip stale entries
+      if (now - pending.timestamp >= TmuxProxyServer.PENDING_SEND_KEYS_TTL_MS) continue
       const tIdx = pending.args.indexOf('-t')
       if (tIdx === -1 || tIdx + 1 >= pending.args.length) continue
 
@@ -357,23 +390,41 @@ export class TmuxProxyServer extends EventEmitter {
 
   private startStatusPolling(paneId: string): void {
     // Poll the last few lines of the pane to extract Claude Code status info
-    // (model, context %, project name, branch)
+    // (model, context %, project name, branch) and detect permission prompts
     const interval = setInterval(async () => {
       try {
         const { stdout } = await this.execCommand(
           this.realTmuxPath,
           this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-J'])
         )
-        // Only parse the last few lines where the status bar lives
+        // Parse the last few lines where the status bar lives
         const lastLines = stdout.split('\n').slice(-5).join('\n')
         const status = this.parseClaudeStatus(lastLines)
         if (status) {
           this.emit('teammate-status-update', { paneId, ...status })
         }
+
+        // Detect permission prompts in the last 15 lines
+        const recentLines = stdout.split('\n').slice(-15).join('\n')
+        const needsInput = this.detectPermissionPrompt(recentLines)
+        this.emit('teammate-input-needed', { paneId, needsInput })
+
+        // Detect task completion — look for completion indicators in recent output.
+        // Also detect the idle prompt (❯) which means the teammate finished and is waiting.
+        const taskComplete =
+          recentLines.includes('TASK COMPLETE') ||
+          recentLines.includes('Completion reported') ||
+          recentLines.includes('Waiting for next instructions') ||
+          recentLines.includes('waiting for task assignment') ||
+          recentLines.includes('Awaiting next assignment') ||
+          (recentLines.includes('Done.') && recentLines.includes('team lead'))
+        if (taskComplete) {
+          this.emit('teammate-task-complete', { paneId })
+        }
       } catch {
         // pane may be gone
       }
-    }, 3000)
+    }, 1000)
 
     // Store with a prefixed key so it doesn't conflict with streaming intervals
     this.paneCaptureIntervals.set(`status-${paneId}`, interval)
@@ -446,14 +497,85 @@ export class TmuxProxyServer extends EventEmitter {
     this.pendingNameLookups.set(paneId, timeout)
   }
 
+  /**
+   * Called when the renderer signals it's ready to receive output for a pane.
+   * Resizes the tmux pane to match the renderer's xterm.js dimensions,
+   * then flushes buffered output and sends a capture-pane snapshot.
+   *
+   * The resize MUST happen before the snapshot — without it, capture-pane
+   * returns text wrapped at 80 columns which garbles when rendered at a
+   * different width.
+   */
+  async flushBufferedOutput(paneId: string, cols?: number, rows?: number): Promise<void> {
+    if (!this.knownPanes.has(paneId)) return
+
+    // Resize tmux pane to match renderer dimensions before capturing
+    if (cols && rows) {
+      await this.resizePane(paneId, cols, rows)
+    }
+
+    this.markPaneReady(paneId)
+
+    // Now that pane dimensions match the renderer, take a snapshot of
+    // whatever is currently on screen. The -e flag preserves ANSI escapes
+    // so xterm.js renders colors/styles natively.
+    try {
+      const { stdout } = await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-e', '-J'])
+      )
+      if (stdout.trim()) {
+        this.emitTeammateOutput(paneId, Buffer.from('\x1b[2J\x1b[H' + stdout))
+      }
+    } catch {
+      // Pane may not exist yet — non-fatal
+    }
+  }
+
+  /**
+   * Called when the renderer signals it's ready to receive output for a pane.
+   * Flushes any buffered output that arrived before the renderer subscribed.
+   */
+  markPaneReady(paneId: string): void {
+    this.readyPanes.add(paneId)
+    const buffered = this.outputBuffers.get(paneId)
+    if (buffered && buffered.length > 0) {
+      const combined = Buffer.concat(buffered)
+      this.outputBuffers.delete(paneId)
+      this.emit('teammate-output', { paneId, data: combined })
+    }
+  }
+
+  private emitTeammateOutput(paneId: string, data: Buffer): void {
+    if (this.readyPanes.has(paneId)) {
+      this.emit('teammate-output', { paneId, data })
+    } else {
+      let buf = this.outputBuffers.get(paneId)
+      if (!buf) {
+        buf = []
+        this.outputBuffers.set(paneId, buf)
+      }
+      buf.push(data)
+    }
+  }
+
   async resizePane(paneId: string, cols: number, rows: number): Promise<void> {
+    console.error(`[TmuxProxyServer] resizePane ${paneId} to ${cols}x${rows}`)
+    try {
+      await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs(['resize-window', '-t', paneId, '-x', String(cols), '-y', String(rows)])
+      )
+    } catch (err) {
+      console.error(`[TmuxProxyServer] resize-window failed for ${paneId}:`, err)
+    }
     try {
       await this.execCommand(
         this.realTmuxPath,
         this.tmuxArgs(['resize-pane', '-t', paneId, '-x', String(cols), '-y', String(rows)])
       )
-    } catch {
-      // resize may fail if pane no longer exists
+    } catch (err) {
+      console.error(`[TmuxProxyServer] resize-pane failed for ${paneId}:`, err)
     }
   }
 
@@ -464,66 +586,175 @@ export class TmuxProxyServer extends EventEmitter {
     // Create the output file
     await fsPromises.writeFile(outFile, '')
 
-    // Use tmux pipe-pane to stream output to the file
+    // Use tmux pipe-pane to stream raw PTY output to the file.
+    // pipe-pane captures the actual output stream (with ANSI codes),
+    // which xterm.js can render natively — unlike capture-pane which
+    // takes screen snapshots that look garbled in a second terminal.
+    let pipePaneWorking = false
     try {
       await this.execCommand(
         this.realTmuxPath,
-        this.tmuxArgs(['pipe-pane', '-t', paneId, '-o', `cat >> "${outFile}"`])
+        // tee uses raw write() syscalls (no user-space buffering), unlike cat
+        // which block-buffers when stdout is a file. This ensures output reaches
+        // the file immediately for low-latency streaming.
+        this.tmuxArgs(['pipe-pane', '-t', paneId, '-o', `tee -a "${outFile}" > /dev/null`])
       )
-    } catch {
-      // pipe-pane may fail, fall back to capture-pane polling
+      pipePaneWorking = true
+    } catch (err) {
+      console.error(`[TmuxProxyServer] pipe-pane failed for ${paneId}:`, err)
+    }
+
+    if (!pipePaneWorking) {
+      // pipe-pane failed immediately — use capture-pane fallback
       this.startCapturePanePolling(paneId)
       return
     }
 
-    // Poll the file for new content
+    // Open a persistent file handle to avoid open/close churn on every poll.
+    // StringDecoder handles partial UTF-8 sequences at chunk boundaries.
+    let fileHandle: fsPromises.FileHandle | undefined
+    try {
+      fileHandle = await fsPromises.open(outFile, 'r')
+    } catch {
+      this.startCapturePanePolling(paneId)
+      return
+    }
+
+    let pollCount = 0
     const state: PaneStreamState = {
       interval: setInterval(() => {
+        if (!state.reading) {
+          state.reading = true
+          pollCount++
+          this.readNewOutput(paneId, state)
+            .then(() => {
+              // Watchdog: if pipe-pane produced no data after 60 polls (~12s),
+              // it's silently broken — switch to capture-pane fallback.
+              // Claude Code often takes 3+ seconds during init, so 15 polls was too aggressive.
+              // Use stopPipePaneOnly to avoid killing status polling.
+              if (pollCount >= 60 && state.bytesRead === 0) {
+                console.error(
+                  `[TmuxProxyServer] pipe-pane silent for ${paneId}, switching to capture-pane`
+                )
+                this.stopPipePaneOnly(paneId)
+                this.startCapturePanePolling(paneId)
+              }
+            })
+            .finally(() => {
+              state.reading = false
+            })
+        }
+      }, 200),
+      outFile,
+      bytesRead: 0,
+      fileHandle,
+      decoder: new StringDecoder('utf8')
+    }
+
+    // Use fs.watch for push-based notification when the file changes.
+    // This triggers an immediate read instead of waiting for the next 200ms poll,
+    // making streaming output feel real-time.
+    try {
+      state.watcher = fs.watch(outFile, () => {
         if (!state.reading) {
           state.reading = true
           this.readNewOutput(paneId, state).finally(() => {
             state.reading = false
           })
         }
-      }, 200),
-      outFile,
-      bytesRead: 0
+      })
+      state.watcher.on('error', () => {
+        // Watcher may fail if file is deleted — polling continues as fallback
+      })
+    } catch {
+      // fs.watch not available — 200ms polling continues as fallback
     }
+
     this.paneStreams.set(paneId, state)
   }
 
   private async readNewOutput(paneId: string, state: PaneStreamState): Promise<void> {
     try {
       const stats = await fsPromises.stat(state.outFile)
-      if (stats.size > state.bytesRead) {
-        const fh = await fsPromises.open(state.outFile, 'r')
-        try {
-          const buf = Buffer.alloc(stats.size - state.bytesRead)
-          await fh.read(buf, 0, buf.length, state.bytesRead)
-          state.bytesRead = stats.size
-          this.emit('teammate-output', { paneId, data: buf })
-        } finally {
-          await fh.close()
-        }
+      if (stats.size <= state.bytesRead) return
+
+      // Read in chunks to avoid large allocations on output bursts
+      const unread = stats.size - state.bytesRead
+      const toRead = Math.min(unread, MAX_READ_CHUNK_BYTES)
+
+      const fh = state.fileHandle
+      if (!fh) return
+
+      const buf = Buffer.alloc(toRead)
+      await fh.read(buf, 0, toRead, state.bytesRead)
+      state.bytesRead += toRead
+
+      // Use StringDecoder to handle partial UTF-8 sequences at chunk boundaries.
+      // If a multi-byte character (emoji, CJK) is split across two reads,
+      // StringDecoder buffers the incomplete bytes and emits them on the next call.
+      const decoded = state.decoder!.write(buf)
+      if (decoded.length > 0) {
+        this.emitTeammateOutput(paneId, Buffer.from(decoded))
+      }
+
+      // Only truncate when we've caught up to prevent data loss.
+      // If unread > MAX_READ_CHUNK_BYTES, we haven't read everything yet.
+      if (stats.size > MAX_OUTPUT_FILE_BYTES && state.bytesRead >= stats.size) {
+        await fsPromises.truncate(state.outFile, 0)
+        state.bytesRead = 0
       }
     } catch {
-      // File might not exist yet
+      // File might not exist yet or handle may be stale
     }
+  }
+
+  private detectPermissionPrompt(text: string): boolean {
+    // Claude Code permission prompts contain these patterns
+    return (
+      text.includes('Do you want to proceed?') ||
+      text.includes('Do you want to make this edit') ||
+      text.includes('Do you want to run') ||
+      (text.includes('1. Yes') && text.includes('3. No')) ||
+      (text.includes('Esc to cancel') && text.includes('Tab to amend'))
+    )
+  }
+
+  private filterClaudeUILines(text: string): string {
+    // Only strip the actual Claude Code status bar line (model + context %).
+    // Keep ALL content lines including box-drawing characters (⎿├└│─━═)
+    // which Claude Code uses extensively in tool output.
+    const lines = text.split('\n')
+    const filtered = lines.filter((line) => {
+      const trimmed = line.trim()
+      if (!trimmed) return true
+      // Strip the status bar: "project  Model X.Y  [████] NN%  ⌞ branch"
+      if (/\b(Opus|Sonnet|Haiku)\b/i.test(trimmed) && /\d+%/.test(trimmed)) return false
+      return true
+    })
+    // Trim leading/trailing empty lines
+    while (filtered.length > 0 && !filtered[0].trim()) filtered.shift()
+    while (filtered.length > 0 && !filtered[filtered.length - 1].trim()) filtered.pop()
+    return filtered.join('\n')
   }
 
   private startCapturePanePolling(paneId: string): void {
     const lastCapture = { content: '' }
     const outFile = ''
+    console.error(`[TmuxProxyServer] Using capture-pane fallback for ${paneId}`)
 
     const interval = setInterval(async () => {
       try {
+        // Use -p for plain text, -J to join wrapped lines
         const { stdout } = await this.execCommand(
           this.realTmuxPath,
-          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-e', '-S', '-'])
+          this.tmuxArgs(['capture-pane', '-t', paneId, '-p', '-J'])
         )
-        if (stdout !== lastCapture.content) {
-          this.emit('teammate-output', { paneId, data: Buffer.from(stdout) })
-          lastCapture.content = stdout
+        const content = this.filterClaudeUILines(stdout)
+
+        if (content !== lastCapture.content && content.trim()) {
+          // Clear and rewrite since capture-pane gives us screen state, not a stream
+          this.emitTeammateOutput(paneId, Buffer.from('\x1b[2J\x1b[H' + content))
+          lastCapture.content = content
         }
       } catch {
         // Pane may have been destroyed
@@ -533,15 +764,34 @@ export class TmuxProxyServer extends EventEmitter {
     this.paneStreams.set(paneId, { interval, outFile, bytesRead: 0 })
   }
 
-  private stopPaneStreaming(paneId: string): void {
+  /**
+   * Stops only the pipe-pane file streaming resources (interval, watcher, file handle)
+   * and cancels the tmux pipe-pane command. Does NOT kill status polling or name lookups.
+   * Used by the watchdog when switching to capture-pane fallback.
+   */
+  private stopPipePaneOnly(paneId: string): void {
     const state = this.paneStreams.get(paneId)
     if (state) {
       clearInterval(state.interval)
+      if (state.watcher) {
+        state.watcher.close()
+      }
+      if (state.fileHandle) {
+        state.fileHandle.close().catch(() => {})
+      }
       if (state.outFile) {
         fsPromises.unlink(state.outFile).catch(() => {})
       }
       this.paneStreams.delete(paneId)
     }
+    // Cancel tmux pipe-pane so the stale tee process doesn't keep running
+    this.execCommand(this.realTmuxPath, this.tmuxArgs(['pipe-pane', '-t', paneId])).catch(() => {})
+  }
+
+  private stopPaneStreaming(paneId: string): void {
+    this.stopPipePaneOnly(paneId)
+    this.readyPanes.delete(paneId)
+    this.outputBuffers.delete(paneId)
     // Clean up status polling
     const statusInterval = this.paneCaptureIntervals.get(`status-${paneId}`)
     if (statusInterval) {
@@ -558,6 +808,8 @@ export class TmuxProxyServer extends EventEmitter {
   async sendInput(paneId: string, data: string): Promise<void> {
     const pane = this.knownPanes.get(paneId)
 
+    // Try direct TTY write first — it's much faster for interactive typing
+    // since it doesn't spawn a subprocess per keystroke.
     if (pane?.tty) {
       try {
         const fh = await fsPromises.open(pane.tty, 'w')
@@ -572,18 +824,52 @@ export class TmuxProxyServer extends EventEmitter {
       }
     }
 
-    const escaped = data.replace(/"/g, '\\"')
+    // Fallback: tmux send-keys -l (literal mode, no escaping needed)
     await this.execCommand(
       this.realTmuxPath,
-      this.tmuxArgs(['send-keys', '-t', paneId, '-l', escaped])
+      this.tmuxArgs(['send-keys', '-t', paneId, '-l', data])
     )
+  }
+
+  /**
+   * Send input via tmux send-keys only (no direct TTY write).
+   * Used for permission prompt responses where Claude Code's raw-mode
+   * input handler needs proper terminal keypress simulation.
+   * Does NOT use -l (literal) flag — sends as key events, not text.
+   */
+  async sendKeys(paneId: string, data: string): Promise<void> {
+    console.error(
+      `[TmuxProxyServer] sendKeys pane=${paneId} key=${data} socket=${this.tmuxSocketName}`
+    )
+    try {
+      await this.execCommand(this.realTmuxPath, this.tmuxArgs(['send-keys', '-t', paneId, data]))
+      console.error(`[TmuxProxyServer] sendKeys success`)
+    } catch (err) {
+      console.error(`[TmuxProxyServer] sendKeys failed:`, err)
+    }
+  }
+
+  /**
+   * Send literal text to a pane (not key names). Uses -l flag.
+   * For text messages that should be typed as-is into the terminal.
+   */
+  async sendLiteralText(paneId: string, text: string): Promise<void> {
+    try {
+      await this.execCommand(
+        this.realTmuxPath,
+        this.tmuxArgs(['send-keys', '-t', paneId, '-l', text])
+      )
+    } catch (err) {
+      console.error(`[TmuxProxyServer] sendLiteralText failed:`, err)
+    }
   }
 
   private startPolling(): void {
     if (this.pollIntervalMs <= 0) return
     this.pollInterval = setInterval(() => {
-      this.discoverPanes().catch((err) => {
-        this.emit('error', err)
+      this.discoverPanes().catch(() => {
+        // Silently ignore polling failures — the tmux server may be shutting down
+        // or not fully started yet. Polling will retry on next interval.
       })
     }, this.pollIntervalMs)
   }

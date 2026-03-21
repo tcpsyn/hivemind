@@ -57,26 +57,31 @@ export default function TopBar() {
     [dispatch, state.tabs]
   )
 
-  const openRecent = useCallback(
+  const openProject = useCallback(
     async (projectPath: string) => {
       setMenuOpen(false)
-      const tab = await window.api.tabCreate({ projectPath })
-      dispatch({
-        type: 'CREATE_TAB',
-        payload: { id: tab.tabId, projectPath: tab.projectPath, projectName: tab.projectName }
-      })
-      dispatch({ type: 'ADD_RECENT_PROJECT', payload: projectPath })
-      const result = await window.api.teamStart({
-        tabId: tab.tabId,
-        config: { name: tab.projectName, project: projectPath, agents: [] }
-      })
-      for (const agent of result.agents) {
-        dispatch({ type: 'ADD_AGENT', payload: agent, tabId: tab.tabId })
+      try {
+        const tab = await window.api.tabCreate({ projectPath })
+        dispatch({
+          type: 'CREATE_TAB',
+          payload: { id: tab.tabId, projectPath: tab.projectPath, projectName: tab.projectName }
+        })
+        dispatch({ type: 'ADD_RECENT_PROJECT', payload: projectPath })
+        dispatch({ type: 'SET_TEAM_STATUS', payload: 'starting', tabId: tab.tabId })
+        const result = await window.api.teamStart({
+          tabId: tab.tabId,
+          config: { name: tab.projectName, project: projectPath, agents: [] }
+        })
+        for (const agent of result.agents) {
+          dispatch({ type: 'ADD_AGENT', payload: agent, tabId: tab.tabId })
+        }
+        if (result.agents.length > 0) {
+          dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId: tab.tabId })
+        }
+        dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId: tab.tabId })
+      } catch (err) {
+        console.error('[TopBar] Failed to open project:', err)
       }
-      if (result.agents.length > 0) {
-        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId: tab.tabId })
-      }
-      dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId: tab.tabId })
     },
     [dispatch]
   )
@@ -85,28 +90,9 @@ export default function TopBar() {
     setMenuOpen(false)
     const folderPath = await window.api.openFolderDialog()
     if (folderPath) {
-      // Create tab in main process (gets PtyManager, FileService, etc.)
-      const tab = await window.api.tabCreate({ projectPath: folderPath })
-      // Create tab in renderer state
-      dispatch({
-        type: 'CREATE_TAB',
-        payload: { id: tab.tabId, projectPath: tab.projectPath, projectName: tab.projectName }
-      })
-      dispatch({ type: 'ADD_RECENT_PROJECT', payload: folderPath })
-      // Auto-start a team session in the new tab
-      const result = await window.api.teamStart({
-        tabId: tab.tabId,
-        config: { name: tab.projectName, project: folderPath, agents: [] }
-      })
-      for (const agent of result.agents) {
-        dispatch({ type: 'ADD_AGENT', payload: agent, tabId: tab.tabId })
-      }
-      if (result.agents.length > 0) {
-        dispatch({ type: 'SET_TEAM_LEAD', payload: result.agents[0].id, tabId: tab.tabId })
-      }
-      dispatch({ type: 'SET_TEAM_STATUS', payload: 'running', tabId: tab.tabId })
+      await openProject(folderPath)
     }
-  }, [dispatch])
+  }, [openProject])
 
   const orderedTabs = state.globalLayout.tabOrder
     .map((id) => state.tabs.get(id))
@@ -162,7 +148,7 @@ export default function TopBar() {
                     <button
                       key={path}
                       className="new-tab-menu-item"
-                      onClick={() => openRecent(path)}
+                      onClick={() => openProject(path)}
                     >
                       <span className="new-tab-menu-item-name">{path.split('/').pop()}</span>
                       <span className="new-tab-menu-item-path">{path}</span>

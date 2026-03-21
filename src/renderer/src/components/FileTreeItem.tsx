@@ -8,6 +8,7 @@ interface FileTreeItemProps {
   isFocused: boolean
   onToggle: (path: string) => void
   onClick: (node: FileTreeNode) => void
+  onDoubleClick?: (node: FileTreeNode) => void
   onContextMenu: (e: React.MouseEvent, node: FileTreeNode) => void
 }
 
@@ -62,6 +63,7 @@ function FileTreeItem({
   isFocused,
   onToggle,
   onClick,
+  onDoubleClick,
   onContextMenu
 }: FileTreeItemProps) {
   const isDir = node.type === 'directory'
@@ -82,6 +84,7 @@ function FileTreeItem({
       data-path={node.path}
       style={{ paddingLeft }}
       onClick={handleClick}
+      onDoubleClick={() => !isDir && onDoubleClick?.(node)}
       onContextMenu={(e) => onContextMenu(e, node)}
       role="treeitem"
       aria-expanded={isDir ? isExpanded : undefined}

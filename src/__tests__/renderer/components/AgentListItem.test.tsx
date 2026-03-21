@@ -21,11 +21,14 @@ function makeAgent(overrides: Partial<AgentState> = {}): AgentState {
 
 function renderItem(
   agent: AgentState,
-  props: { onClick?: () => void; onContextMenu?: (action: string) => void } = {}
+  props: {
+    onClick?: () => void
+    onAgentContextMenu?: (agentId: string, action: string) => void
+  } = {}
 ) {
   return render(
     <AppProvider>
-      <AgentListItem agent={agent} {...props} />
+      <AgentListItem agent={agent} agentId={agent.id} {...props} />
     </AppProvider>
   )
 }
@@ -108,16 +111,16 @@ describe('AgentListItem', () => {
     expect(screen.getByText('View History')).toBeInTheDocument()
   })
 
-  it('calls onContextMenu with action when menu item clicked', async () => {
-    const onContextMenu = vi.fn()
+  it('calls onAgentContextMenu with agentId and action when menu item clicked', async () => {
+    const onAgentContextMenu = vi.fn()
     const user = userEvent.setup()
-    renderItem(makeAgent(), { onContextMenu })
+    renderItem(makeAgent(), { onAgentContextMenu })
 
     const item = screen.getByTestId('agent-list-item-agent-1')
     fireEvent.contextMenu(item)
 
     await user.click(screen.getByText('Restart'))
-    expect(onContextMenu).toHaveBeenCalledWith('restart')
+    expect(onAgentContextMenu).toHaveBeenCalledWith('agent-1', 'restart')
   })
 
   it('hides context menu when clicking outside', async () => {

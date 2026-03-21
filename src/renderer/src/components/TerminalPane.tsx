@@ -32,7 +32,12 @@ export function TerminalPane({ agent }: TerminalPaneProps) {
         <AgentAvatar avatar={agent.avatar} color={agent.color} size={20} />
         <span className="pane-name">{agent.name}</span>
         <span className="pane-role">{agent.role}</span>
-        <span className={`status-dot ${agent.status}`} data-testid="status-dot" />
+        <span
+          className={`status-dot ${agent.status}`}
+          data-testid="status-dot"
+          role="status"
+          aria-label={`Status: ${agent.status}`}
+        />
       </div>
       <div className="terminal-container" data-testid="terminal-container" ref={containerRef} />
     </div>

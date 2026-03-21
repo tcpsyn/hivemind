@@ -19,7 +19,8 @@ export const MainToRenderer = {
   TEAM_TEAMMATE_EXITED: 'team:teammate-exited',
   TEAM_TEAMMATE_RENAMED: 'team:teammate-renamed',
   TEAM_TEAMMATE_STATUS: 'team:teammate-status',
-  TEAMMATE_OUTPUT: 'teammate:output'
+  TEAMMATE_OUTPUT: 'teammate:output',
+  TEAMMATE_INPUT_NEEDED: 'teammate:input-needed'
 } as const
 
 // Renderer → Main channels (invoke/handle pattern)
@@ -36,6 +37,7 @@ export const RendererToMain = {
   TEAM_STOP: 'team:stop',
   TEAMMATE_INPUT: 'teammate:input',
   TEAMMATE_RESIZE: 'teammate:resize',
+  TEAMMATE_OUTPUT_READY: 'teammate:output-ready',
   TAB_CREATE: 'tab:create',
   TAB_CLOSE: 'tab:close'
 } as const
@@ -170,9 +172,17 @@ export interface TeammateInputRequest {
   tabId: string
   paneId: string
   data: string
+  useKeys?: boolean
 }
 
 export interface TeammateResizeRequest {
+  tabId: string
+  paneId: string
+  cols: number
+  rows: number
+}
+
+export interface TeammateOutputReadyRequest {
   tabId: string
   paneId: string
   cols: number

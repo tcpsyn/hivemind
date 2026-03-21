@@ -83,8 +83,8 @@
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: 0;
-  width: 4px;
+  right: -4px;
+  width: 12px;
   height: 100%;
   cursor: col-resize;
   background: transparent;
@@ -92,7 +92,18 @@
   z-index: 10;
 }
 
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle:active {
+/* Visual indicator stays 4px centered within the wider hit target */
+.sidebar-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 4px;
+  width: 4px;
+  height: 100%;
+  transition: background var(--transition-fast);
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle:active::after {
   background: var(--border-focus);
 }

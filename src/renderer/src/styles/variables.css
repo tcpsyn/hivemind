@@ -23,6 +23,7 @@
   --status-idle: #9ca3af;
   --status-waiting: #fbbf24;
   --status-stopped: #f87171;
+  --status-active: #45b7d1;
 
   /* Agent colors — only peach is used in CSS (git modified status).
      All 12 colors are applied via inline styles from constants.ts. */
@@ -103,4 +104,32 @@
 
 ::-webkit-scrollbar-corner {
   background: transparent;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Global focus-visible styles */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+[role='separator']:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 0;
 }

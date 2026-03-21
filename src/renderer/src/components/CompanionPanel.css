@@ -91,6 +91,17 @@
   cursor: row-resize;
   flex-shrink: 0;
   transition: background var(--transition-fast);
+  position: relative;
+}
+
+/* Larger hit target for easier grabbing */
+.companion-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  bottom: -4px;
 }
 
 .companion-divider:hover {

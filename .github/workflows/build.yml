@@ -9,7 +9,35 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test
+
   build:
+    needs: check
     strategy:
       matrix:
         include:
@@ -35,17 +63,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Run tests
-        run: pnpm test
+        run: pnpm install --frozen-lockfile
 
       - name: Build (macOS)
         if: matrix.platform == 'mac'

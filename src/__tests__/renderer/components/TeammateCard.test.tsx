@@ -108,22 +108,26 @@ describe('TeammateCard', () => {
       expect(screen.queryByTestId('btn-deny')).not.toBeInTheDocument()
     })
 
-    it('Approve button sends y to agent PTY', () => {
+    it('Approve button sends Enter to agent PTY', () => {
       renderCard(makeTeammate({ needsInput: true }))
       fireEvent.click(screen.getByTestId('btn-approve'))
-      expect(window.api.agentInput).toHaveBeenCalledWith({
-        agentId: 'teammate-1',
-        data: 'y\n'
-      })
+      expect(window.api.agentInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: 'teammate-1',
+          data: 'y\n'
+        })
+      )
     })
 
-    it('Deny button sends n to agent PTY', () => {
+    it('Deny button sends Escape to agent PTY', () => {
       renderCard(makeTeammate({ needsInput: true }))
       fireEvent.click(screen.getByTestId('btn-deny'))
-      expect(window.api.agentInput).toHaveBeenCalledWith({
-        agentId: 'teammate-1',
-        data: 'n\n'
-      })
+      expect(window.api.agentInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: 'teammate-1',
+          data: 'n\n'
+        })
+      )
     })
 
     it('Approve button does not trigger onSelect (no focus steal)', () => {
@@ -209,33 +213,41 @@ describe('TeammateCard', () => {
   })
 
   describe('tmux proxy (paneId) routing', () => {
-    it('Approve sends input via sendTeammateInput when paneId exists', () => {
+    it('Approve sends Enter via sendTeammateInput when paneId exists', () => {
       renderCard(makeTeammate({ needsInput: true, paneId: '%1' }))
       fireEvent.click(screen.getByTestId('btn-approve'))
-      expect(window.api.sendTeammateInput).toHaveBeenCalledWith({
-        paneId: '%1',
-        data: 'y\n'
-      })
+      expect(window.api.sendTeammateInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paneId: '%1',
+          data: 'Enter',
+          useKeys: true
+        })
+      )
       expect(window.api.agentInput).not.toHaveBeenCalled()
     })
 
-    it('Deny sends input via sendTeammateInput when paneId exists', () => {
+    it('Deny sends Escape via sendTeammateInput when paneId exists', () => {
       renderCard(makeTeammate({ needsInput: true, paneId: '%1' }))
       fireEvent.click(screen.getByTestId('btn-deny'))
-      expect(window.api.sendTeammateInput).toHaveBeenCalledWith({
-        paneId: '%1',
-        data: 'n\n'
-      })
+      expect(window.api.sendTeammateInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paneId: '%1',
+          data: 'Escape',
+          useKeys: true
+        })
+      )
       expect(window.api.agentInput).not.toHaveBeenCalled()
     })
 
     it('falls back to agentInput when no paneId', () => {
       renderCard(makeTeammate({ needsInput: true }))
       fireEvent.click(screen.getByTestId('btn-approve'))
-      expect(window.api.agentInput).toHaveBeenCalledWith({
-        agentId: 'teammate-1',
-        data: 'y\n'
-      })
+      expect(window.api.agentInput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          agentId: 'teammate-1',
+          data: 'y\n'
+        })
+      )
       expect(window.api.sendTeammateInput).not.toHaveBeenCalled()
     })
   })

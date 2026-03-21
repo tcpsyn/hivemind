@@ -1,5 +1,8 @@
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { WebglAddon } from '@xterm/addon-webgl'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { WebLinksAddon } from '@xterm/addon-web-links'
 import { TERMINAL_THEME } from '../../../shared/constants'
 
 export interface TerminalEntry {
@@ -7,7 +10,6 @@ export interface TerminalEntry {
   fitAddon: FitAddon
   cleanup: () => void
   isAttached: boolean
-  pendingOutput: string[]
 }
 
 const entries = new Map<string, TerminalEntry>()
@@ -18,11 +20,36 @@ function makeKey(tabId: string, id: string): string {
 
 const BASE_TERMINAL_OPTIONS: Partial<ConstructorParameters<typeof Terminal>[0]> = {
   fontSize: 13,
-  fontFamily: "'MesloLGS NF', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
+  fontFamily: "'MesloLGS NF', 'JetBrains Mono', 'Menlo', 'DejaVu Sans Mono', 'SF Mono', monospace",
+  fontWeight: '400',
+  fontWeightBold: '700',
   theme: TERMINAL_THEME,
   allowTransparency: false,
-  scrollback: 10000
+  scrollback: 10000,
+  drawBoldTextInBrightColors: false
 }
+
+function loadAddons(terminal: Terminal): void {
+  try {
+    // Unicode 11 for proper emoji and wide-character width calculation
+    const unicode11 = new Unicode11Addon()
+    terminal.loadAddon(unicode11)
+    terminal.unicode.activeVersion = '11'
+  } catch {
+    // May fail in test environments with mocked Terminal
+  }
+
+  try {
+    // Clickable URLs in terminal output
+    terminal.loadAddon(new WebLinksAddon())
+  } catch {
+    // May fail in test environments
+  }
+}
+
+// WebGL addon requires an open terminal (canvas in DOM).
+// Tracked per-terminal to avoid double-loading on reattach.
+const webglLoaded = new Set<string>()
 
 export function getTerminal(tabId: string, id: string): TerminalEntry | undefined {
   return entries.get(makeKey(tabId, id))
@@ -47,10 +74,11 @@ export function getOrCreateTerminal(
   const terminal = new Terminal({ ...BASE_TERMINAL_OPTIONS, ...options })
   const fitAddon = new FitAddon()
   terminal.loadAddon(fitAddon)
+  loadAddons(terminal)
 
   const cleanup = setupFn ? setupFn(terminal) : () => {}
 
-  const entry: TerminalEntry = { terminal, fitAddon, cleanup, isAttached: false, pendingOutput: [] }
+  const entry: TerminalEntry = { terminal, fitAddon, cleanup, isAttached: false }
   entries.set(key, entry)
   return entry
 }
@@ -60,7 +88,8 @@ export function getOrCreateTerminal(
  * On subsequent calls, moves the existing DOM element into the new container.
  */
 export function attachTerminal(tabId: string, id: string, container: HTMLDivElement): void {
-  const entry = entries.get(makeKey(tabId, id))
+  const key = makeKey(tabId, id)
+  const entry = entries.get(key)
   if (!entry) return
 
   const { terminal, fitAddon } = entry
@@ -73,21 +102,26 @@ export function attachTerminal(tabId: string, id: string, container: HTMLDivElem
 
   entry.isAttached = true
 
-  // Flush any output that arrived while detached
-  if (entry.pendingOutput.length > 0) {
-    for (const data of entry.pendingOutput) {
-      terminal.write(data)
+  // Load WebGL renderer after terminal is open (requires canvas in DOM)
+  if (!webglLoaded.has(key)) {
+    try {
+      const webgl = new WebglAddon()
+      webgl.onContextLoss(() => {
+        webgl.dispose()
+        webglLoaded.delete(key)
+      })
+      terminal.loadAddon(webgl)
+      webglLoaded.add(key)
+    } catch {
+      // WebGL unavailable — canvas renderer is used automatically
     }
-    entry.pendingOutput = []
   }
 
-  // Delay fit/refresh/focus until after DOM layout settles
+  // Delay refresh/focus until after DOM layout settles.
+  // NOTE: Do NOT call fitAddon.fit() here — the caller's ResizeObserver
+  // handles fitting with proper timing. Calling fit() here races with
+  // the observer and can measure stale/wrong container dimensions.
   requestAnimationFrame(() => {
-    try {
-      fitAddon.fit()
-    } catch {
-      // fit may fail if container has no dimensions yet
-    }
     terminal.refresh(0, terminal.rows - 1)
     terminal.focus()
   })
@@ -112,14 +146,6 @@ export function isTerminalAttached(tabId: string, id: string): boolean {
   return entry?.isAttached ?? false
 }
 
-/** Buffers output data for a detached terminal (replayed on reattach). */
-export function bufferOutput(tabId: string, id: string, data: string): void {
-  const entry = entries.get(makeKey(tabId, id))
-  if (entry) {
-    entry.pendingOutput.push(data)
-  }
-}
-
 /** Disposes a single terminal and removes it from the registry. */
 export function disposeTerminal(tabId: string, id: string): void {
   const key = makeKey(tabId, id)
@@ -128,6 +154,7 @@ export function disposeTerminal(tabId: string, id: string): void {
   entry.cleanup()
   entry.terminal.dispose()
   entries.delete(key)
+  webglLoaded.delete(key)
 }
 
 /** Disposes all terminals for a given tab. Call on tab close. */
@@ -138,6 +165,7 @@ export function disposeTabTerminals(tabId: string): void {
       entry.cleanup()
       entry.terminal.dispose()
       entries.delete(key)
+      webglLoaded.delete(key)
     }
   }
 }
@@ -159,4 +187,5 @@ export function clearAllTerminals(): void {
     entry.terminal.dispose()
   }
   entries.clear()
+  webglLoaded.clear()
 }

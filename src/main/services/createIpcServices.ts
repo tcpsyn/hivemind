@@ -6,6 +6,14 @@ import type { TeamConfigService } from './TeamConfigService'
 import type { IpcServices } from '../ipc/handlers'
 import * as path from 'path'
 
+function assertPathWithinRoot(filePath: string, rootPath: string): void {
+  const resolved = path.resolve(rootPath, filePath)
+  const normalizedRoot = path.resolve(rootPath) + path.sep
+  if (resolved !== path.resolve(rootPath) && !resolved.startsWith(normalizedRoot)) {
+    throw new Error(`Path traversal denied: ${filePath} is outside project root`)
+  }
+}
+
 export interface TabContext {
   session: TeamSession | null
   ptyManager: PtyManager
@@ -39,6 +47,10 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
     const tab = tabs.get(tabId)
     if (!tab) throw new Error(`No tab context found for tabId: ${tabId}`)
     return tab
+  }
+
+  function tryGetTab(tabId: string): TabContext | null {
+    return tabs.get(tabId) ?? null
   }
 
   return {
@@ -112,20 +124,31 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
     },
 
     onFileRead: async (req) => {
-      const content = await getTab(req.tabId).fileService.readFile(req.filePath)
+      const tab = tryGetTab(req.tabId)
+      if (!tab) return { content: '', filePath: req.filePath }
+      assertPathWithinRoot(req.filePath, tab.projectPath)
+      const content = await tab.fileService.readFile(req.filePath)
       return { content, filePath: req.filePath }
     },
 
     onFileWrite: async (req) => {
-      await getTab(req.tabId).fileService.writeFile(req.filePath, req.content)
+      const tab = getTab(req.tabId)
+      assertPathWithinRoot(req.filePath, tab.projectPath)
+      await tab.fileService.writeFile(req.filePath, req.content)
     },
 
     onFileTreeRequest: async (req) => {
-      return getTab(req.tabId).fileService.getFileTree(req.rootPath)
+      const tab = tryGetTab(req.tabId)
+      if (!tab) return []
+      assertPathWithinRoot(req.rootPath, tab.projectPath)
+      return tab.fileService.getFileTree(req.rootPath)
     },
 
     onGitDiff: async (req) => {
-      const diff = await getTab(req.tabId).gitService.getDiff(req.filePath)
+      const tab = tryGetTab(req.tabId)
+      if (!tab) return { diff: '', filePath: req.filePath }
+      assertPathWithinRoot(req.filePath, tab.projectPath)
+      const diff = await tab.gitService.getDiff(req.filePath)
       return { diff, filePath: req.filePath }
     },
 
@@ -156,7 +179,7 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
     onTeammateInput: async (req) => {
       const tab = getTab(req.tabId)
       if (!tab.session) throw new Error('No active team session')
-      await tab.session.sendTeammateInput(req.paneId, req.data)
+      await tab.session.sendTeammateInput(req.paneId, req.data, req.useKeys)
     },
 
     onTeammateResize: async (req) => {
@@ -165,6 +188,15 @@ export function createIpcServices(deps: ServiceDeps): IpcServices {
       const server = tab.session.getServer()
       if (server) {
         await server.resizePane(req.paneId, req.cols, req.rows)
+      }
+    },
+
+    onTeammateOutputReady: async (req) => {
+      const tab = getTab(req.tabId)
+      if (!tab.session) throw new Error('No active team session')
+      const server = tab.session.getServer()
+      if (server) {
+        await server.flushBufferedOutput(req.paneId, req.cols, req.rows)
       }
     },
 
