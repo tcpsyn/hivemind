@@ -7,7 +7,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { execFileSync } from 'child_process'
-import { readFileSync, writeFileSync, appendFileSync } from 'fs'
 import { z } from 'zod'
 
 // NOTE: Canonical source is src/main/mcp/hivemind-mcp-server.ts — rebuild with `pnpm build:mcp`
@@ -15,8 +14,6 @@ const TMUX_CMD = process.env.REAL_TMUX || 'tmux'
 const TMUX_SOCKET = process.env.CC_TMUX_SOCKET || ''
 const TMUX_SESSION = process.env.CC_TMUX_SESSION || ''
 const LEAD_PANE = process.env.TMUX_PANE || '%0'
-
-const UPDATES_FILE = `/tmp/hivemind-${(TMUX_SESSION || 'default').replace(/[^a-zA-Z0-9_-]/g, '_')}-updates.jsonl`
 
 function runTmux(...args) {
   const socketArgs = TMUX_SOCKET ? ['-L', TMUX_SOCKET] : []
@@ -30,7 +27,7 @@ const server = new McpServer({ name: 'hivemind', version: '1.0.0' })
 
 server.tool(
   'hivemind_list_teammates',
-  'List all active teammate agent panes, their status, AND any pending completion notifications from teammates.',
+  'List all active teammate agent panes and their status.',
   {},
   async () => {
     let result
@@ -55,18 +52,6 @@ server.tool(
     } catch {
       result = { content: [{ type: 'text', text: 'No active teammates found.' }] }
     }
-    // Append pending completion notifications
-    try {
-      const raw = readFileSync(UPDATES_FILE, 'utf-8')
-      const lines = raw.split('\n').filter(Boolean)
-      if (lines.length > 0) {
-        const updates = lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
-        writeFileSync(UPDATES_FILE, '')
-        if (updates.length > 0) {
-          result.content.push({ type: 'text', text: '\n--- TEAMMATE COMPLETION NOTIFICATIONS ---\n' + JSON.stringify(updates, null, 2) })
-        }
-      }
-    } catch { /* no updates file yet */ }
     return result
   }
 )
@@ -119,35 +104,6 @@ server.tool(
         isError: true
       }
     }
-  }
-)
-
-server.tool(
-  'hivemind_report_complete',
-  'Report that you have completed your assigned task. Call this when you finish work so the team lead is notified.',
-  {
-    summary: z.string().describe('Brief summary of what you accomplished')
-  },
-  async ({ summary }) => {
-    const entry = JSON.stringify({ pane_id: LEAD_PANE, summary, timestamp: new Date().toISOString() })
-    appendFileSync(UPDATES_FILE, entry + '\n')
-    return { content: [{ type: 'text', text: 'Completion reported. The team lead will be notified.' }] }
-  }
-)
-
-server.tool(
-  'hivemind_get_updates',
-  'Get pending completion notifications from teammates. Returns all updates since last check and clears them.',
-  {},
-  async () => {
-    let raw
-    try { raw = readFileSync(UPDATES_FILE, 'utf-8') } catch { return { content: [{ type: 'text', text: 'No pending updates.' }] } }
-    const lines = raw.split('\n').filter(Boolean)
-    if (lines.length === 0) return { content: [{ type: 'text', text: 'No pending updates.' }] }
-    const updates = lines.map(l => { try { return JSON.parse(l) } catch { return null } }).filter(Boolean)
-    writeFileSync(UPDATES_FILE, '')
-    if (updates.length === 0) return { content: [{ type: 'text', text: 'No pending updates.' }] }
-    return { content: [{ type: 'text', text: JSON.stringify(updates, null, 2) }] }
   }
 )
 

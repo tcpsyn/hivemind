@@ -402,19 +402,6 @@ interface TeammateOutputPayload {
 }
 ```
 
-#### `teammate:input-needed`
-
-Teammate is waiting for user input (permission prompt detected).
-
-```typescript
-interface TeammateInputNeededPayload {
-  tabId: string
-  agentId: string
-  needsInput: boolean
-  paneId: string
-}
-```
-
 ### Notification Events
 
 #### `notification:focus-agent`
@@ -426,18 +413,6 @@ Sent when the user clicks a native OS notification for an agent. The renderer sh
 ```
 
 ### Special Events
-
-#### `teammate:task-complete`
-
-A teammate has completed its assigned task (detected via MCP `hivemind_report_complete` call).
-
-```typescript
-interface TeammateTaskCompletePayload {
-  tabId: string
-  agentId: string
-  name: string
-}
-```
 
 #### `team:auto-started`
 
@@ -506,9 +481,6 @@ interface ElectronApi {
   onTeammateOutput(cb: (payload: TeammateOutputPayload) => void): () => void
   onTeammateRenamed(cb: (payload: TeammateRenamedPayload) => void): () => void
   onTeammateStatus(cb: (payload: TeammateStatusPayload) => void): () => void
-  onTeammateInputNeeded(cb: (payload: TeammateInputNeededPayload) => void): () => void
-  onTeammateTaskComplete(cb: (payload: TeammateTaskCompletePayload) => void): () => void
-
   // Auto-start and menu events
   onTeamAutoStarted(cb: (payload: TeamAutoStartedPayload) => void): () => void
   onMenuTeamStart(cb: (config: unknown) => void): () => void

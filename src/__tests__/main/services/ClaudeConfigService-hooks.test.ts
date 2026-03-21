@@ -48,7 +48,7 @@ describe('ClaudeConfigService — hook merging edge cases', () => {
       const hivemindPerms = config.permissions.allow.filter((p: string) =>
         p.startsWith('mcp__hivemind__')
       )
-      expect(hivemindPerms).toHaveLength(5)
+      expect(hivemindPerms).toHaveLength(3)
       expect(config.permissions.allow).toContain('Bash(npm test)')
     })
 

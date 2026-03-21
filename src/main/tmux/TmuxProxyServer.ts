@@ -309,7 +309,7 @@ export class TmuxProxyServer extends EventEmitter {
           this.leadSessionName,
           '-a',
           '-F',
-          '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
+          '#{pane_id}|#{pane_pid}|#{pane_title}|#{pane_tty}|#{session_name}'
         ])
       )
       stdout = result.stdout
@@ -403,24 +403,6 @@ export class TmuxProxyServer extends EventEmitter {
         if (status) {
           this.emit('teammate-status-update', { paneId, ...status })
         }
-
-        // Detect permission prompts in the last 15 lines
-        const recentLines = stdout.split('\n').slice(-15).join('\n')
-        const needsInput = this.detectPermissionPrompt(recentLines)
-        this.emit('teammate-input-needed', { paneId, needsInput })
-
-        // Detect task completion — look for completion indicators in recent output.
-        // Also detect the idle prompt (❯) which means the teammate finished and is waiting.
-        const taskComplete =
-          recentLines.includes('TASK COMPLETE') ||
-          recentLines.includes('Completion reported') ||
-          recentLines.includes('Waiting for next instructions') ||
-          recentLines.includes('waiting for task assignment') ||
-          recentLines.includes('Awaiting next assignment') ||
-          (recentLines.includes('Done.') && recentLines.includes('team lead'))
-        if (taskComplete) {
-          this.emit('teammate-task-complete', { paneId })
-        }
       } catch {
         // pane may be gone
       }
@@ -461,14 +443,43 @@ export class TmuxProxyServer extends EventEmitter {
   }
 
   private scheduleNameLookup(paneId: string, pid: number): void {
-    // Try to resolve the agent name after the process has time to start
+    // Try to resolve the agent name after the process has time to start.
+    // Sources (in priority order):
+    // 1. tmux pane title (set by Claude Code to agent description)
+    // 2. --agent-name flag in child process args
+    // 3. tmux window name
     const attempts = [2000, 5000, 10000]
     let attemptIdx = 0
+
+    const isGenericName = (name: string) =>
+      !name ||
+      name === 'Claude Code' ||
+      name === 'claude' ||
+      name === 'bash' ||
+      name === this.leadSessionName
 
     const tryLookup = async () => {
       const pane = this.knownPanes.get(paneId)
       if (!pane) return
 
+      // Check tmux pane title first — Claude Code updates this after startup
+      try {
+        const { stdout: titleOut } = await this.execCommand(
+          this.realTmuxPath,
+          this.tmuxArgs(['display-message', '-t', paneId, '-p', '#{pane_title}|#{window_name}'])
+        )
+        const [paneTitle, windowName] = titleOut.trim().split('|')
+        const bestName = (!isGenericName(paneTitle) ? paneTitle : windowName) || ''
+        if (!isGenericName(bestName) && bestName !== pane.windowName) {
+          pane.windowName = bestName
+          this.emit('teammate-renamed', { paneId, name: bestName })
+          return
+        }
+      } catch {
+        // ignore
+      }
+
+      // Fallback: check child process args for --agent-name
       try {
         const { stdout: childOut } = await this.execCommand('pgrep', [
           '-P',
@@ -477,7 +488,7 @@ export class TmuxProxyServer extends EventEmitter {
         ]).catch(() => ({ stdout: '' }))
 
         const nameMatch = childOut.match(/--agent-name\s+(\S+)/)
-        if (nameMatch && nameMatch[1] !== pane.windowName) {
+        if (nameMatch && !isGenericName(nameMatch[1])) {
           pane.windowName = nameMatch[1]
           this.emit('teammate-renamed', { paneId, name: nameMatch[1] })
           return
@@ -560,22 +571,21 @@ export class TmuxProxyServer extends EventEmitter {
   }
 
   async resizePane(paneId: string, cols: number, rows: number): Promise<void> {
-    console.error(`[TmuxProxyServer] resizePane ${paneId} to ${cols}x${rows}`)
     try {
       await this.execCommand(
         this.realTmuxPath,
         this.tmuxArgs(['resize-window', '-t', paneId, '-x', String(cols), '-y', String(rows)])
       )
-    } catch (err) {
-      console.error(`[TmuxProxyServer] resize-window failed for ${paneId}:`, err)
+    } catch {
+      // resize-window may fail if pane is the only one in the window
     }
     try {
       await this.execCommand(
         this.realTmuxPath,
         this.tmuxArgs(['resize-pane', '-t', paneId, '-x', String(cols), '-y', String(rows)])
       )
-    } catch (err) {
-      console.error(`[TmuxProxyServer] resize-pane failed for ${paneId}:`, err)
+    } catch {
+      // resize-pane may fail if pane no longer exists
     }
   }
 
@@ -600,8 +610,8 @@ export class TmuxProxyServer extends EventEmitter {
         this.tmuxArgs(['pipe-pane', '-t', paneId, '-o', `tee -a "${outFile}" > /dev/null`])
       )
       pipePaneWorking = true
-    } catch (err) {
-      console.error(`[TmuxProxyServer] pipe-pane failed for ${paneId}:`, err)
+    } catch {
+      // pipe-pane not available for this pane
     }
 
     if (!pipePaneWorking) {
@@ -633,9 +643,6 @@ export class TmuxProxyServer extends EventEmitter {
               // Claude Code often takes 3+ seconds during init, so 15 polls was too aggressive.
               // Use stopPipePaneOnly to avoid killing status polling.
               if (pollCount >= 60 && state.bytesRead === 0) {
-                console.error(
-                  `[TmuxProxyServer] pipe-pane silent for ${paneId}, switching to capture-pane`
-                )
                 this.stopPipePaneOnly(paneId)
                 this.startCapturePanePolling(paneId)
               }
@@ -708,17 +715,6 @@ export class TmuxProxyServer extends EventEmitter {
     }
   }
 
-  private detectPermissionPrompt(text: string): boolean {
-    // Claude Code permission prompts contain these patterns
-    return (
-      text.includes('Do you want to proceed?') ||
-      text.includes('Do you want to make this edit') ||
-      text.includes('Do you want to run') ||
-      (text.includes('1. Yes') && text.includes('3. No')) ||
-      (text.includes('Esc to cancel') && text.includes('Tab to amend'))
-    )
-  }
-
   private filterClaudeUILines(text: string): string {
     // Only strip the actual Claude Code status bar line (model + context %).
     // Keep ALL content lines including box-drawing characters (⎿├└│─━═)
@@ -739,8 +735,6 @@ export class TmuxProxyServer extends EventEmitter {
 
   private startCapturePanePolling(paneId: string): void {
     const lastCapture = { content: '' }
-    const outFile = ''
-    console.error(`[TmuxProxyServer] Using capture-pane fallback for ${paneId}`)
 
     const interval = setInterval(async () => {
       try {
@@ -761,7 +755,7 @@ export class TmuxProxyServer extends EventEmitter {
       }
     }, 500)
 
-    this.paneStreams.set(paneId, { interval, outFile, bytesRead: 0 })
+    this.paneStreams.set(paneId, { interval, outFile: '', bytesRead: 0 })
   }
 
   /**
@@ -838,30 +832,7 @@ export class TmuxProxyServer extends EventEmitter {
    * Does NOT use -l (literal) flag — sends as key events, not text.
    */
   async sendKeys(paneId: string, data: string): Promise<void> {
-    console.error(
-      `[TmuxProxyServer] sendKeys pane=${paneId} key=${data} socket=${this.tmuxSocketName}`
-    )
-    try {
-      await this.execCommand(this.realTmuxPath, this.tmuxArgs(['send-keys', '-t', paneId, data]))
-      console.error(`[TmuxProxyServer] sendKeys success`)
-    } catch (err) {
-      console.error(`[TmuxProxyServer] sendKeys failed:`, err)
-    }
-  }
-
-  /**
-   * Send literal text to a pane (not key names). Uses -l flag.
-   * For text messages that should be typed as-is into the terminal.
-   */
-  async sendLiteralText(paneId: string, text: string): Promise<void> {
-    try {
-      await this.execCommand(
-        this.realTmuxPath,
-        this.tmuxArgs(['send-keys', '-t', paneId, '-l', text])
-      )
-    } catch (err) {
-      console.error(`[TmuxProxyServer] sendLiteralText failed:`, err)
-    }
+    await this.execCommand(this.realTmuxPath, this.tmuxArgs(['send-keys', '-t', paneId, data]))
   }
 
   private startPolling(): void {

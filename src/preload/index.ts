@@ -64,20 +64,9 @@ export interface ElectronApi {
   onTeammateOutput: (callback: (payload: TeammateOutputPayload) => void) => () => void
   onTeammateRenamed: (callback: (payload: TeammateRenamedPayload) => void) => () => void
   onTeammateStatus: (callback: (payload: TeammateStatusPayload) => void) => () => void
-  onTeammateInputNeeded: (
-    callback: (payload: {
-      tabId: string
-      agentId: string
-      needsInput: boolean
-      paneId: string
-    }) => void
-  ) => () => void
   sendTeammateInput: (req: TeammateInputRequest) => Promise<void>
   teammateResize: (req: TeammateResizeRequest) => Promise<void>
   teammateOutputReady: (req: TeammateOutputReadyRequest) => Promise<void>
-  onTeammateTaskComplete: (
-    callback: (payload: { tabId: string; agentId: string; name: string }) => void
-  ) => () => void
 
   // Auto-start and menu events
   onTeamAutoStarted: (
@@ -130,8 +119,6 @@ const api: ElectronApi = {
   onTeammateRenamed: createOnHandler(MainToRenderer.TEAM_TEAMMATE_RENAMED),
   onTeammateStatus: createOnHandler(MainToRenderer.TEAM_TEAMMATE_STATUS),
   onTeammateOutput: createOnHandler(MainToRenderer.TEAMMATE_OUTPUT),
-  onTeammateInputNeeded: createOnHandler(MainToRenderer.TEAMMATE_INPUT_NEEDED),
-  onTeammateTaskComplete: createOnHandler('teammate:task-complete'),
   sendTeammateInput: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_INPUT, req),
   teammateResize: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_RESIZE, req),
   teammateOutputReady: (req) => ipcRenderer.invoke(RendererToMain.TEAMMATE_OUTPUT_READY, req),

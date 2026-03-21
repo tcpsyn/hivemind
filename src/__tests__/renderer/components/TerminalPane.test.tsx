@@ -72,24 +72,6 @@ describe('TerminalPane', () => {
     expect(dot.className).toContain('stopped')
   })
 
-  it('applies amber border when agent needs input', () => {
-    const { container } = render(
-      <AppProvider>
-        <TerminalPane agent={makeAgent({ needsInput: true })} />
-      </AppProvider>
-    )
-    expect(container.querySelector('.terminal-pane.needs-input')).toBeInTheDocument()
-  })
-
-  it('does not apply amber border when agent does not need input', () => {
-    const { container } = render(
-      <AppProvider>
-        <TerminalPane agent={makeAgent({ needsInput: false })} />
-      </AppProvider>
-    )
-    expect(container.querySelector('.terminal-pane.needs-input')).not.toBeInTheDocument()
-  })
-
   it('applies the agent color to the header', () => {
     render(
       <AppProvider>

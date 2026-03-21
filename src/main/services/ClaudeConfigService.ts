@@ -89,8 +89,6 @@ export class ClaudeConfigService {
           'mcp__hivemind__hivemind_list_teammates',
           'mcp__hivemind__hivemind_check_teammate',
           'mcp__hivemind__hivemind_send_message',
-          'mcp__hivemind__hivemind_report_complete',
-          'mcp__hivemind__hivemind_get_updates',
           // Common tools — auto-approve so teammates work without permission prompts
           'Read',
           'Write',
@@ -102,10 +100,7 @@ export class ClaudeConfigService {
       },
       hooks: {
         ...((existing.hooks as Record<string, unknown>) || {}),
-        // No Agent hook — let Claude Code handle agent spawning natively.
-        // When TMUX env var is set, Claude Code creates tmux panes for agents
-        // and uses its native SendMessage/inbox system for communication.
-        // The agent-intercept-hook previously blocked this, breaking communication.
+        // Filter out any Agent hooks — let Claude Code handle agent spawning natively
         PreToolUse: [
           ...(
             ((existing.hooks as Record<string, unknown>)?.PreToolUse as Array<

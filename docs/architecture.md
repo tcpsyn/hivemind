@@ -99,7 +99,7 @@ Key design points:
 PtyManager wraps `node-pty` to provide agent terminal sessions:
 
 - **`createPty(config, cwd, extraEnv?)`** — Spawns a login shell running the agent's command. Each agent gets a unique ID (`agent-{counter}-{timestamp}`), status tracking, and event listeners for data/exit/error.
-- **`sendInput(agentId, data)`** — Writes to the PTY's stdin. Clears the `needsInput` flag on the agent.
+- **`sendInput(agentId, data)`** — Writes to the PTY's stdin.
 - **`resize(agentId, cols, rows)`** — Resizes the PTY dimensions.
 - **`destroyPty(agentId)`** / **`destroyAll()`** — Kills processes and cleans up.
 
@@ -128,17 +128,15 @@ Both files are backed up before writing and restored on session stop.
 
 ### MCP Server (`src/main/mcp/hivemind-mcp-server.ts`)
 
-A standalone Node.js MCP server that runs as a subprocess of each Claude Code agent (via stdio transport). It provides five tools for teammate coordination:
+A standalone Node.js MCP server that runs as a subprocess of each Claude Code agent (via stdio transport). It provides three tools for teammate coordination:
 
-| Tool                       | Purpose                                                         |
-| -------------------------- | --------------------------------------------------------------- |
-| `hivemind_list_teammates`  | List active teammate panes + pending completion notifications   |
-| `hivemind_check_teammate`  | Get recent output and status of a specific teammate pane        |
-| `hivemind_send_message`    | Send a message/task to a teammate by typing into their terminal |
-| `hivemind_report_complete` | Report task completion (writes to a shared JSONL file)          |
-| `hivemind_get_updates`     | Get and consume pending teammate completion notifications       |
+| Tool                      | Purpose                                                         |
+| ------------------------- | --------------------------------------------------------------- |
+| `hivemind_list_teammates` | List active teammate panes and their status                     |
+| `hivemind_check_teammate` | Get recent output and status of a specific teammate pane        |
+| `hivemind_send_message`   | Send a message/task to a teammate by typing into their terminal |
 
-The server queries tmux directly using `REAL_TMUX` and `CC_TMUX_SOCKET` env vars. Completion reports are persisted to `/tmp/hivemind-{session}-updates.jsonl` and consumed (truncated) on read. Built with `@modelcontextprotocol/sdk` and bundled via `pnpm build:mcp` (esbuild).
+The server queries tmux directly using `REAL_TMUX` and `CC_TMUX_SOCKET` env vars. Built with `@modelcontextprotocol/sdk` and bundled via `pnpm build:mcp` (esbuild).
 
 ## Preload Bridge (`src/preload/index.ts`)
 
@@ -147,7 +145,7 @@ The preload script uses Electron's `contextBridge` to expose a typed `window.api
 The API surface includes:
 
 - **16 invoke methods** — Request/response calls (tab CRUD, agent lifecycle, file I/O, git ops, team + teammate management)
-- **13 event listeners** — Subscriptions returning unsubscribe functions (agent output, status changes, teammate events, file changes)
+- **11 event listeners** — Subscriptions returning unsubscribe functions (agent output, status changes, teammate events, file changes)
 - **3 menu event handlers** — Team start/stop triggered from the application menu, and auto-start on launch
 
 All channels and payload types are defined in `src/shared/ipc-channels.ts`. See [IPC Reference](./ipc-reference.md) for the full listing.

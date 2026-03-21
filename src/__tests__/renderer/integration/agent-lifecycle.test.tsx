@@ -248,7 +248,7 @@ describe('Agent Lifecycle Integration', () => {
       expect(listItem).toHaveClass('needs-input')
     })
 
-    it('applies needs-input class to terminal pane', async () => {
+    it('does not apply needs-input class to terminal pane', async () => {
       const agent = makeAgent({ id: 'agent-1', name: 'architect' })
       renderApp()
 
@@ -261,7 +261,7 @@ describe('Agent Lifecycle Integration', () => {
       })
 
       const pane = screen.getByTestId('terminal-pane-agent-1')
-      expect(pane).toHaveClass('needs-input')
+      expect(pane).not.toHaveClass('needs-input')
     })
   })
 

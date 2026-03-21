@@ -118,21 +118,19 @@ Individual agent terminal. Contains:
 - **Header**: Agent avatar, name, role, colored status dot
 - **Body**: xterm.js terminal container
 
-Uses the `useTerminal` hook to manage the xterm.js instance. If the agent's `needsInput` flag is set, the pane highlights with a yellow glow animation.
+Uses the `useTerminal` hook to manage the xterm.js instance.
 
 ### CompanionPanel
 
 Teammate management panel (right side of LeadLayout):
 
-- **Top**: Teammate dashboard with cards sorted by priority (needs-input first)
+- **Top**: Teammate dashboard with cards
 - **Divider**: Draggable row-resize between dashboard and terminal
 - **Bottom**: Terminal for the selected teammate
 
 ### TeammateTerminalPane
 
 Terminal pane for teammate tmux panes. Similar to `TerminalPane` but uses the `useTeammateTerminal` hook instead of `useTerminal`. Handles the complexity of reattaching to a tmux pane: on component remount, it clears stale pipe-pane data, fits the terminal, and requests a fresh `capture-pane` snapshot from the main process.
-
-Also integrates `usePermissionDetector` to detect when Claude Code is waiting for a permission prompt and surfaces Approve/Deny buttons in the UI.
 
 ### TeammateCard
 
@@ -141,7 +139,6 @@ Shows teammate status at a glance:
 - Avatar, name, agent type, status dot
 - Model name, context window usage (e.g., "42%"), git branch
 - Relative timestamp ("Just now", "5s ago", "2m ago")
-- If `needsInput`: Approve/Deny buttons that send `y\n` or `n\n` via IPC
 - Click to select and view terminal output
 
 ### AgentAvatar
@@ -213,7 +210,6 @@ React error boundary wrapping the app. On error, shows:
 | `useTerminal`           | `hooks/useTerminal.ts`           | Creates xterm.js instance for lead agents, subscribes to `onAgentOutput`, handles input via `agentInput`, auto-resizes via FitAddon + ResizeObserver (150ms debounce). Writes a welcome banner on first create, clears it on first output.                                                                                 |
 | `useTeammateTerminal`   | `hooks/useTeammateTerminal.ts`   | Like `useTerminal` but for teammate tmux panes. Uses `sendTeammateInput`/`onTeammateOutput`. Handles reattach: clears garbled pipe-pane data, fits terminal, calls `teammateOutputReady` for capture-pane snapshot. First mount uses double-rAF to wait for DOM layout.                                                    |
 | `useAgentManager`       | `hooks/useAgentManager.ts`       | Central lifecycle hook. Subscribes to all agent + teammate IPC events and dispatches state updates routed by `payload.tabId`. Tracks per-tab agent sets via refs to avoid stale closure issues. Exports: `startTeam`, `stopTeam`, `stopAgent`, `restartAgent`, `isTeamRunning`. Handles auto-start events and menu events. |
-| `usePermissionDetector` | `hooks/usePermissionDetector.ts` | Subscribes to teammate terminal output and checks a rolling buffer for Claude Code permission prompt patterns. When detected, surfaces Approve/Deny buttons on the TeammateCard. Sends `y\n` or `n\n` via `send-keys` on user action.                                                                                      |
 | `useFileTree`           | `hooks/useFileTree.ts`           | Loads file tree via `fileTreeRequest`, tracks expanded directories, reloads on `onFileChanged` events                                                                                                                                                                                                                      |
 | `useEditor`             | `hooks/useEditor.ts`             | File content loading, modification tracking, debounced autosave (500ms), read-only toggle. Tracks file path changes to reload content.                                                                                                                                                                                     |
 | `useLayoutPersistence`  | `hooks/useLayoutPersistence.ts`  | Persists/restores layout state to localStorage with `hivemind:` prefix                                                                                                                                                                                                                                                     |

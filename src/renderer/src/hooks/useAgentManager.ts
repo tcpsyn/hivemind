@@ -179,45 +179,11 @@ export function useAgentManager() {
       })
     })
 
-    const unsubInputNeeded = window.api?.onTeammateInputNeeded?.((payload) => {
-      dispatch({
-        type: 'UPDATE_AGENT',
-        payload: {
-          id: payload.agentId,
-          needsInput: payload.needsInput
-        },
-        tabId: payload.tabId
-      })
-    })
-
-    const unsubTaskComplete = window.api?.onTeammateTaskComplete?.((payload) => {
-      dispatch({
-        type: 'ADD_NOTIFICATION',
-        payload: {
-          id: `task-complete-${payload.agentId}-${Date.now()}`,
-          type: 'info' as const,
-          message: `${payload.name} has completed their task. Click to review.`,
-          agentId: payload.agentId
-        },
-        tabId: payload.tabId
-      })
-      dispatch({
-        type: 'UPDATE_AGENT',
-        payload: {
-          id: payload.agentId,
-          status: 'idle'
-        },
-        tabId: payload.tabId
-      })
-    })
-
     return () => {
       unsubSpawned?.()
       unsubExited?.()
       unsubRenamed?.()
       unsubStatus?.()
-      unsubTaskComplete?.()
-      unsubInputNeeded?.()
     }
   }, [dispatch])
 

@@ -17,9 +17,6 @@ export const teamConfigSchema = z.object({
   agents: z.array(agentConfigSchema).min(1, 'At least one agent is required')
 })
 
-export type ValidatedAgentConfig = z.infer<typeof agentConfigSchema>
-export type ValidatedTeamConfig = z.infer<typeof teamConfigSchema>
-
 // IPC request schemas
 const tabIdField = z.string().min(1)
 const agentIdField = z.string().min(1)

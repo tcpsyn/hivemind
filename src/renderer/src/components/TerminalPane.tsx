@@ -15,12 +15,8 @@ export function TerminalPane({ agent }: TerminalPaneProps) {
   const { activeTabId } = useAppState()
   useTerminal(activeTabId, agent.id, containerRef)
 
-  const paneClasses = ['terminal-pane', agent.needsInput ? 'needs-input' : '']
-    .filter(Boolean)
-    .join(' ')
-
   return (
-    <div className={paneClasses} data-testid={`terminal-pane-${agent.id}`}>
+    <div className="terminal-pane" data-testid={`terminal-pane-${agent.id}`}>
       <div
         className="pane-header"
         data-testid="pane-header"

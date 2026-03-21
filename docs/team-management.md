@@ -161,10 +161,7 @@ When a pane disappears from `tmux list-panes`, the proxy emits `teammate-exited`
 When an agent needs user input:
 
 1. PtyManager checks output against `INPUT_PROMPT_PATTERNS` (❯, (y/n), [Y/n], [y/N], (yes/no))
-2. Sets `agent.needsInput = true`
-3. Emits `input-needed` event
-4. NotificationService shows native OS notification (debounced: 10s minimum between notifications per agent)
-5. Renderer highlights the agent with a yellow glow animation
-6. For teammates, CompanionPanel shows Approve/Deny buttons
+2. Emits `input-needed` event
+3. NotificationService shows native OS notification (debounced: 10s minimum between notifications per agent)
 
 Clicking a notification focuses the Electron window and sends a `notification:focus-agent` event. The dock badge updates with the count of pending notifications.

@@ -1,14 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import * as net from 'net'
 import * as os from 'os'
 import * as path from 'path'
 import * as crypto from 'crypto'
 import * as fsPromises from 'fs/promises'
-import {
-  TmuxProxyServer,
-  type ExecCommand,
-  type ProxyPaneInfo
-} from '../../../main/tmux/TmuxProxyServer'
+import { TmuxProxyServer, type ExecCommand } from '../../../main/tmux/TmuxProxyServer'
 
 function waitForEvent<T>(emitter: TmuxProxyServer, event: string, timeoutMs = 5000): Promise<T> {
   return new Promise((resolve, reject) => {

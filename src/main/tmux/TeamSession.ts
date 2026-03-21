@@ -1,6 +1,6 @@
 import { join, resolve } from 'path'
 import { tmpdir } from 'os'
-import { existsSync, readdirSync, unlinkSync, promises as fsPromises } from 'fs'
+import { existsSync, readdirSync, unlinkSync } from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { EventEmitter } from 'events'
@@ -69,14 +69,6 @@ export class TeamSession extends EventEmitter {
   }
 
   async start(leadCommand?: string): Promise<AgentState> {
-    // Clear stale completion notifications from previous sessions
-    const safeName = this.sessionName.replace(/[^a-zA-Z0-9_-]/g, '_')
-    const updatesFile = join(tmpdir(), `hivemind-${safeName}-updates.jsonl`)
-    try {
-      await fsPromises.writeFile(updatesFile, '')
-    } catch {
-      // non-fatal
-    }
     // Create a dedicated tmux server and session so Claude Code
     // detects tmux and spawns agents as tmux panes (not subprocesses)
     await execFileAsync(this.realTmuxPath, [
@@ -135,8 +127,7 @@ export class TeamSession extends EventEmitter {
 
     this.wireServerEvents()
 
-    // Write Claude Code hooks + MCP config so the lead agent's
-    // Agent tool calls get intercepted and spawned as tmux panes
+    // Write Claude Code settings + MCP config for the lead agent
     this.configService = new ClaudeConfigService({
       projectDir: this.projectPath,
       binDir: TeamSession.getBinDir(),
@@ -182,7 +173,7 @@ export class TeamSession extends EventEmitter {
       this.leadAgent = null
     }
 
-    // Clean up Claude Code hook + MCP config files
+    // Clean up Claude Code settings + MCP config files
     if (this.configService) {
       try {
         await this.configService.cleanup()
@@ -277,12 +268,33 @@ export class TeamSession extends EventEmitter {
 
     this.proxyServer.on('teammate-detected', (paneInfo: ProxyPaneInfo) => {
       const agentId = `tmux-${paneInfo.paneId}`
+      const teammateIndex = this.teammates.size
+      const colors = [
+        '#4ECDC4',
+        '#FF6B6B',
+        '#45B7D1',
+        '#96CEB4',
+        '#FFEAA7',
+        '#DDA0DD',
+        '#F7DC6F',
+        '#BB8FCE'
+      ]
+      const avatars = [
+        'robot-1',
+        'robot-2',
+        'robot-3',
+        'circuit',
+        'diamond',
+        'hexagon',
+        'star',
+        'shield'
+      ]
       const agent: AgentState = {
         id: agentId,
         name: paneInfo.windowName || 'teammate',
         role: 'teammate',
-        avatar: '',
-        color: '',
+        avatar: avatars[teammateIndex % avatars.length],
+        color: colors[teammateIndex % colors.length],
         status: 'running',
         needsInput: false,
         lastActivity: Date.now(),
@@ -316,28 +328,6 @@ export class TeamSession extends EventEmitter {
         }
       }
     )
-
-    this.proxyServer.on(
-      'teammate-input-needed',
-      ({ paneId, needsInput }: { paneId: string; needsInput: boolean }) => {
-        const agentId = this.paneIdToAgentId.get(paneId)
-        if (agentId) {
-          this.emit('teammate-input-needed', agentId, needsInput, paneId)
-        }
-      }
-    )
-
-    // Track which panes have reported completion to avoid duplicate events
-    const completedPanes = new Set<string>()
-    this.proxyServer.on('teammate-task-complete', ({ paneId }: { paneId: string }) => {
-      if (completedPanes.has(paneId)) return
-      completedPanes.add(paneId)
-      const agentId = this.paneIdToAgentId.get(paneId)
-      if (agentId) {
-        const agent = this.teammates.get(agentId)
-        this.emit('teammate-task-complete', agentId, agent?.name || 'teammate', paneId)
-      }
-    })
 
     this.proxyServer.on(
       'teammate-renamed',

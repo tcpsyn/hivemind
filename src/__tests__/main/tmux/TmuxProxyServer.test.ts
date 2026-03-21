@@ -477,7 +477,7 @@ describe('TmuxProxyServer', () => {
         'main',
         '-a',
         '-F',
-        '#{pane_id}|#{pane_pid}|#{window_name}|#{pane_tty}|#{session_name}'
+        '#{pane_id}|#{pane_pid}|#{pane_title}|#{pane_tty}|#{session_name}'
       ])
     })
 

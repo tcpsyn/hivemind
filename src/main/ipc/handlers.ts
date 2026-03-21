@@ -216,10 +216,3 @@ export function sendTeammateRenamed(window: BrowserWindow, payload: TeammateRena
 export function sendTeammateStatus(window: BrowserWindow, payload: TeammateStatusPayload): void {
   sendToRenderer(window, MainToRenderer.TEAM_TEAMMATE_STATUS, payload)
 }
-
-export function sendTeammateInputNeeded(
-  window: BrowserWindow,
-  payload: { tabId: string; agentId: string; needsInput: boolean; paneId: string }
-): void {
-  sendToRenderer(window, MainToRenderer.TEAMMATE_INPUT_NEEDED, payload)
-}

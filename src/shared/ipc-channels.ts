@@ -19,8 +19,7 @@ export const MainToRenderer = {
   TEAM_TEAMMATE_EXITED: 'team:teammate-exited',
   TEAM_TEAMMATE_RENAMED: 'team:teammate-renamed',
   TEAM_TEAMMATE_STATUS: 'team:teammate-status',
-  TEAMMATE_OUTPUT: 'teammate:output',
-  TEAMMATE_INPUT_NEEDED: 'teammate:input-needed'
+  TEAMMATE_OUTPUT: 'teammate:output'
 } as const
 
 // Renderer → Main channels (invoke/handle pattern)

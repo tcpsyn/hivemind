@@ -2,27 +2,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import MonacoEditor from '../../../renderer/src/components/MonacoEditor'
 
-const { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme, mockSetValue } = vi.hoisted(
-  () => {
-    const mockDispose = vi.fn()
-    const mockUpdateOptions = vi.fn()
-    const mockSetValue = vi.fn()
+const { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme } = vi.hoisted(() => {
+  const mockDispose = vi.fn()
+  const mockUpdateOptions = vi.fn()
+  const mockSetValue = vi.fn()
 
-    const mockCreate = vi.fn(() => ({
-      dispose: mockDispose,
-      setValue: mockSetValue,
-      getValue: vi.fn(() => 'file content'),
-      updateOptions: mockUpdateOptions,
-      onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
-      getModel: vi.fn(() => ({ dispose: vi.fn() })),
-      layout: vi.fn()
-    }))
+  const mockCreate = vi.fn(() => ({
+    dispose: mockDispose,
+    setValue: mockSetValue,
+    getValue: vi.fn(() => 'file content'),
+    updateOptions: mockUpdateOptions,
+    onDidChangeModelContent: vi.fn(() => ({ dispose: vi.fn() })),
+    getModel: vi.fn(() => ({ dispose: vi.fn() })),
+    layout: vi.fn()
+  }))
 
-    const mockSetTheme = vi.fn()
+  const mockSetTheme = vi.fn()
 
-    return { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme, mockSetValue }
-  }
-)
+  return { mockDispose, mockUpdateOptions, mockCreate, mockSetTheme }
+})
 
 vi.mock('monaco-editor', () => ({
   editor: {

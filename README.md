@@ -53,7 +53,7 @@ Once enabled, Claude Code will use tmux to spawn teammate agents when you ask it
 ### Prerequisites
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
-- Node.js 20+
+- Node.js 22+
 - pnpm
 - tmux (installed via Homebrew: `brew install tmux`)
 
@@ -114,7 +114,7 @@ pnpm build
 
 ```bash
 pnpm dev            # Start in development mode
-pnpm test:unit      # Run unit tests (Vitest, 632 tests)
+pnpm test:unit      # Run unit tests (Vitest)
 pnpm test:e2e       # Run E2E tests (Playwright)
 pnpm lint           # Run ESLint
 pnpm format         # Run Prettier
@@ -137,6 +137,7 @@ pnpm test:coverage  # Run tests with coverage
 src/
   main/              # Electron main process
     ipc/             # IPC channel definitions
+    mcp/             # MCP server for agent coordination
     pty/             # PTY management
     tmux/            # Team orchestration (TeamSession, TmuxProxyServer)
     services/        # File, git, and team config services

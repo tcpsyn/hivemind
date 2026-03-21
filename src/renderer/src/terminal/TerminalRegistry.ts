@@ -92,7 +92,7 @@ export function attachTerminal(tabId: string, id: string, container: HTMLDivElem
   const entry = entries.get(key)
   if (!entry) return
 
-  const { terminal, fitAddon } = entry
+  const { terminal } = entry
 
   if (!terminal.element) {
     terminal.open(container)

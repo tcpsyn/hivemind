@@ -5,7 +5,7 @@
  * Investigates the garbled-output bug: terminal wraps at wrong column width
  * after switching panes, fixed by manual window resize.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { AppProvider } from '../../../renderer/src/state/AppContext'
@@ -14,19 +14,18 @@ const TAB_ID = 'tab-default'
 
 const {
   mockTerminal,
-  mockElement,
   mockFitAddon,
   mockOnTeammateOutput,
   mockTeammateOutputReady,
   mockTeammateResize
 } = vi.hoisted(() => {
-  const mockElement = document.createElement('div')
-  mockElement.classList.add('terminal', 'xterm')
+  const _mockElement = document.createElement('div')
+  _mockElement.classList.add('terminal', 'xterm')
 
   const mockTerminal = {
     open: vi.fn((container: HTMLDivElement) => {
-      mockTerminal.element = mockElement
-      container.appendChild(mockElement)
+      mockTerminal.element = _mockElement
+      container.appendChild(_mockElement)
     }),
     write: vi.fn(),
     reset: vi.fn(),
@@ -53,7 +52,6 @@ const {
 
   return {
     mockTerminal,
-    mockElement,
     mockFitAddon,
     mockOnTeammateOutput,
     mockTeammateOutputReady,
@@ -84,25 +82,19 @@ Object.defineProperty(window, 'api', {
   configurable: true
 })
 
-// Capture ResizeObserver callbacks per observed element
-let resizeObserverCallback: (() => void) | null = null
-let resizeObserverObservedElement: Element | null = null
+// Mock ResizeObserver — fires callback on next tick after observe()
 vi.stubGlobal(
   'ResizeObserver',
   class {
     private cb: () => void
     constructor(cb: () => void) {
       this.cb = cb
-      resizeObserverCallback = cb
     }
-    observe(el: Element) {
-      resizeObserverObservedElement = el
+    observe() {
       // Fire on next tick like a real browser
       setTimeout(() => this.cb(), 0)
     }
-    disconnect() {
-      resizeObserverObservedElement = null
-    }
+    disconnect() {}
     unobserve() {}
   }
 )
@@ -312,7 +304,6 @@ describe('useTeammateTerminal — pane switch simulation', () => {
         private cb: () => void
         constructor(cb: () => void) {
           this.cb = cb
-          resizeObserverCallback = cb
         }
         observe() {
           setTimeout(() => this.cb(), 0)

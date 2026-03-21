@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAppState } from '../state/AppContext'
+import { useEffect, useRef, useState } from 'react'
 import AgentAvatar from './AgentAvatar'
 import type { AgentState } from '../../../shared/types'
 import './TeammateCard.css'
@@ -20,7 +19,6 @@ function formatLastActivity(timestamp: number): string {
 }
 
 export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps) {
-  const { activeTabId } = useAppState()
   const [isActive, setIsActive] = useState(false)
   const activeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -44,76 +42,7 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
     }
   }, [agent.paneId])
 
-  const handleApprove = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
-      if (agent.paneId) {
-        // Send Enter key via tmux send-keys (selects default Yes option)
-        window.api.sendTeammateInput({
-          tabId: activeTabId,
-          paneId: agent.paneId,
-          data: 'Enter',
-          useKeys: true
-        })
-      } else {
-        window.api.agentInput({ tabId: activeTabId, agentId: agent.id, data: 'y\n' })
-      }
-    },
-    [agent.id, agent.paneId, activeTabId]
-  )
-
-  const handleApproveAll = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
-      if (agent.paneId) {
-        // Select option 2: "Yes, and don't ask again" — Down then Enter
-        window.api.sendTeammateInput({
-          tabId: activeTabId,
-          paneId: agent.paneId,
-          data: 'Down',
-          useKeys: true
-        })
-        setTimeout(() => {
-          window.api.sendTeammateInput({
-            tabId: activeTabId,
-            paneId: agent.paneId!,
-            data: 'Enter',
-            useKeys: true
-          })
-        }, 100)
-      }
-    },
-    [agent.paneId, activeTabId]
-  )
-
-  const handleDeny = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation()
-      e.preventDefault()
-      if (agent.paneId) {
-        // Send Escape key via tmux send-keys (cancels the prompt)
-        window.api.sendTeammateInput({
-          tabId: activeTabId,
-          paneId: agent.paneId,
-          data: 'Escape',
-          useKeys: true
-        })
-      } else {
-        window.api.agentInput({ tabId: activeTabId, agentId: agent.id, data: 'n\n' })
-      }
-    },
-    [agent.id, agent.paneId, activeTabId]
-  )
-
-  const classes = [
-    'teammate-card',
-    isSelected ? 'selected' : '',
-    agent.needsInput ? 'needs-input' : ''
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const classes = ['teammate-card', isSelected ? 'selected' : ''].filter(Boolean).join(' ')
 
   return (
     <div
@@ -155,37 +84,6 @@ export function TeammateCard({ agent, isSelected, onSelect }: TeammateCardProps)
           {formatLastActivity(agent.lastActivity)}
         </span>
       </div>
-      {agent.needsInput && (
-        <div className="teammate-card-actions">
-          <button
-            className="btn-approve"
-            data-testid="btn-approve"
-            onClick={handleApprove}
-            onMouseDown={(e) => e.preventDefault()}
-            aria-label={`Approve ${agent.name}`}
-          >
-            Approve
-          </button>
-          <button
-            className="btn-approve-all"
-            data-testid="btn-approve-all"
-            onClick={handleApproveAll}
-            onMouseDown={(e) => e.preventDefault()}
-            aria-label={`Approve all for ${agent.name}`}
-          >
-            Approve All
-          </button>
-          <button
-            className="btn-deny"
-            data-testid="btn-deny"
-            onClick={handleDeny}
-            onMouseDown={(e) => e.preventDefault()}
-            aria-label={`Deny ${agent.name}`}
-          >
-            Deny
-          </button>
-        </div>
-      )}
     </div>
   )
 }

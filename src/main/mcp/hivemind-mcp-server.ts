@@ -8,7 +8,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { execFileSync } from 'child_process'
-import { readFileSync, writeFileSync, appendFileSync } from 'fs'
 import { z } from 'zod'
 
 const TMUX_CMD = process.env.REAL_TMUX || 'tmux'
@@ -162,83 +161,15 @@ export function sendMessage(
   }
 }
 
-export function getUpdatesFilePath(session?: string): string {
-  const safeName = (session || 'default').replace(/[^a-zA-Z0-9_-]/g, '_')
-  return `/tmp/hivemind-${safeName}-updates.jsonl`
-}
-
-export function reportComplete(
-  filePath: string,
-  paneId: string,
-  summary: string
-): { content: Array<{ type: 'text'; text: string }> } {
-  const entry = JSON.stringify({
-    pane_id: paneId,
-    summary,
-    timestamp: new Date().toISOString()
-  })
-  appendFileSync(filePath, entry + '\n')
-  return {
-    content: [{ type: 'text', text: 'Completion reported. The team lead will be notified.' }]
-  }
-}
-
-export function getUpdates(filePath: string): {
-  content: Array<{ type: 'text'; text: string }>
-} {
-  let raw: string
-  try {
-    raw = readFileSync(filePath, 'utf-8')
-  } catch {
-    return { content: [{ type: 'text', text: 'No pending updates.' }] }
-  }
-
-  const lines = raw.split('\n').filter(Boolean)
-  if (lines.length === 0) {
-    return { content: [{ type: 'text', text: 'No pending updates.' }] }
-  }
-
-  const updates = lines
-    .map((line) => {
-      try {
-        return JSON.parse(line)
-      } catch {
-        return null
-      }
-    })
-    .filter(Boolean)
-
-  // Truncate the file so updates aren't repeated
-  writeFileSync(filePath, '')
-
-  if (updates.length === 0) {
-    return { content: [{ type: 'text', text: 'No pending updates.' }] }
-  }
-
-  return {
-    content: [{ type: 'text', text: JSON.stringify(updates, null, 2) }]
-  }
-}
-
 export function createServer(): McpServer {
   const server = new McpServer({ name: 'hivemind', version: '1.0.0' })
-  const updatesFile = getUpdatesFilePath(TMUX_SESSION || undefined)
 
   server.tool(
     'hivemind_list_teammates',
-    'List all active teammate agent panes, their status, AND any pending completion notifications from teammates.',
+    'List all active teammate agent panes and their status.',
     {},
     async () => {
-      const result = listTeammates(TMUX_CMD, TMUX_SOCKET, LEAD_PANE, TMUX_SESSION || undefined)
-      // Append pending updates so the lead sees them without calling a separate tool
-      const updates = getUpdates(updatesFile)
-      if (updates.content[0].text !== 'No pending updates.') {
-        result.content.push({
-          type: 'text',
-          text: '\n--- TEAMMATE COMPLETION NOTIFICATIONS ---\n' + updates.content[0].text
-        })
-      }
-      return result
+      return listTeammates(TMUX_CMD, TMUX_SOCKET, LEAD_PANE, TMUX_SESSION || undefined)
     }
   )
 
@@ -260,27 +191,6 @@ export function createServer(): McpServer {
     },
     async ({ pane_id, message }) => {
       return sendMessage(TMUX_CMD, TMUX_SOCKET, pane_id, message)
-    }
-  )
-
-  server.tool(
-    'hivemind_report_complete',
-    'Report that you have completed your assigned task. Call this when you finish work so the team lead is notified.',
-    {
-      summary: z.string().describe('Brief summary of what you accomplished')
-    },
-    async ({ summary }) => {
-      const paneId = LEAD_PANE // The calling agent's pane — resolved from env
-      return reportComplete(updatesFile, paneId, summary)
-    }
-  )
-
-  server.tool(
-    'hivemind_get_updates',
-    'Get pending completion notifications from teammates. Returns all updates since last check and clears them.',
-    {},
-    async () => {
-      return getUpdates(updatesFile)
     }
   )
 

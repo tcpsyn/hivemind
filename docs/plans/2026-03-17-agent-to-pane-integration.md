@@ -1,10 +1,10 @@
 # Agent-to-Pane Integration — Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **ARCHIVED (2026-03-21):** This plan is superseded. The hook-based interception approach (`agent-intercept-hook`) was replaced by native Claude Code team support. Claude Code now handles agent spawning natively via tmux when `TMUX` env var is set. The `ClaudeConfigService` removes any Agent hook (rather than adding one) and registers the MCP server with 3 tools (`list_teammates`, `check_teammate`, `send_message`). The `report_complete` and `get_updates` tools described below were never shipped.
 
 **Goal:** Make Claude Code's Agent tool spawn visible, interactive tmux panes in Hivemind instead of invisible background subprocesses.
 
-**Architecture:** A PreToolUse hook intercepts every `Agent` tool call, blocks it (exit 2), and creates a tmux pane running `claude` with the agent's prompt. A lightweight MCP server provides `list_teammates` and `check_teammate` tools so the lead agent can query teammate status. Hivemind's existing pane discovery picks up the new panes automatically.
+**Architecture (original, superseded):** A PreToolUse hook intercepts every `Agent` tool call, blocks it (exit 2), and creates a tmux pane running `claude` with the agent's prompt. A lightweight MCP server provides `list_teammates` and `check_teammate` tools so the lead agent can query teammate status. Hivemind's existing pane discovery picks up the new panes automatically.
 
 **Tech Stack:** Bash (hook script), TypeScript + @modelcontextprotocol/sdk (MCP server), Node.js (config service)
 
